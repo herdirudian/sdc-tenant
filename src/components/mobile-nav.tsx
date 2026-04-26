@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/actions/auth";
 import { ICON_MAP, IconName } from "@/lib/icons";
@@ -19,7 +18,11 @@ interface MobileNavProps {
 
 export function MobileNav({ items }: MobileNavProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const pathname = usePathname();
+  const [pathname, setPathname] = useState("");
+
+  useEffect(() => {
+    setPathname(window.location.pathname);
+  }, []);
 
   // Close menu when route changes
   useEffect(() => {
@@ -85,6 +88,10 @@ export function MobileNav({ items }: MobileNavProps) {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => {
+                  setPathname(item.href);
+                  setIsOpen(false);
+                }}
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition-colors",
                   isActive 
