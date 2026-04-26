@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { PaymentMethod } from "@/generated/prisma/enums";
 import { Zap, Loader2, Paperclip, X } from "lucide-react";
 import { scanReceiptAction, createExpenseAction, updateExpenseAction } from "@/actions/expense";
-import { useRouter } from "next/navigation";
 
 interface ExpenseFormProps {
   editExpense?: any;
@@ -16,7 +15,6 @@ interface ExpenseFormProps {
 }
 
 export function ExpenseForm({ editExpense, defaultCategories }: ExpenseFormProps) {
-  const router = useRouter();
   const [isScanning, setIsScanning] = useState(false);
   const [formData, setFormData] = useState({
     occurredAt: editExpense ? new Date(editExpense.occurredAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],

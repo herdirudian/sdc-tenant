@@ -4,11 +4,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { syncPaidInvoices } from "@/actions/invoice";
 import { RefreshCcw } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 export function SyncPaidInvoicesButton() {
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   const handleSync = async () => {
     if (!confirm("Ini akan membuat record pembayaran untuk invoice yang statusnya PAID tapi belum ada datanya di dashboard revenue. Lanjutkan?")) {
@@ -20,7 +18,7 @@ export function SyncPaidInvoicesButton() {
       const result = await syncPaidInvoices();
       if (result.success) {
         alert(`Berhasil sinkronisasi ${result.count} invoice.`);
-        router.refresh();
+        window.location.reload();
       }
     } catch (err) {
       console.error(err);
