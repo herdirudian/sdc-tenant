@@ -80,7 +80,7 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
     const doc = new PDFDocument({ 
       size: "A4", 
       margin: 40,
-      font: getFont()
+      font: getFont() as any
     });
     const chunks: Buffer[] = [];
 
