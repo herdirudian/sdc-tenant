@@ -62,8 +62,13 @@ export default async function InvoicePrintPage({
           --muted: 210 40% 96.1%;
           --muted-foreground: 215.4 16.3% 46.9%;
           --border: 214.3 31.8% 91.4%;
-          background-color: white !important;
+          background-color: white;
           color: #0f172a !important;
+        }
+        @media print {
+          .portal-light-theme {
+            background-color: transparent !important;
+          }
         }
         .portal-light-theme * {
           border-color: #e2e8f0 !important;
