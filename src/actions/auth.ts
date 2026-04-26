@@ -204,7 +204,7 @@ export async function verifyAndResetPassword(formData: FormData) {
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.USER,
     entityId: user.id,
-    details: "Reset password using verification code",
+    afterJson: { note: "Reset password using verification code" },
     ip: meta.ip,
     userAgent: meta.userAgent,
   });
