@@ -77,13 +77,13 @@ export default async function ExpensesPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-red-600 dark:text-red-400">Pengeluaran (Expenses)</h1>
           <p className="text-sm text-muted-foreground">Kelola biaya operasional, gaji, dan pengeluaran lainnya.</p>
         </div>
-        <Link href="/">
-          <Button variant="outline" size="sm">
+        <Link href="/" className="w-full sm:w-auto">
+          <Button variant="outline" size="sm" className="w-full sm:w-auto">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
           </Button>
         </Link>
@@ -151,98 +151,104 @@ export default async function ExpensesPage({
                     <Filter className="h-5 w-5 text-muted-foreground" /> Riwayat Pengeluaran
                   </CardTitle>
                 </div>
-                <form method="get" className="flex flex-wrap gap-2">
+                <form method="get" className="flex flex-wrap gap-2 w-full sm:w-auto">
                   <select
                     name="category"
-                    className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                    className="h-8 flex-1 sm:flex-initial rounded-md border border-input bg-background px-2 text-xs"
                     defaultValue={category ?? ""}
                   >
                     <option value="">Semua Kategori</option>
                     {categories.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <Input name="from" type="date" className="h-8 w-32 text-xs" defaultValue={from ?? ""} />
-                  <Input name="to" type="date" className="h-8 w-32 text-xs" defaultValue={to ?? ""} />
-                  <Button type="submit" size="sm" variant="secondary" className="h-8">Filter</Button>
+                  <Input name="from" type="date" className="h-8 flex-1 sm:w-32 text-xs" defaultValue={from ?? ""} />
+                  <Input name="to" type="date" className="h-8 flex-1 sm:w-32 text-xs" defaultValue={to ?? ""} />
+                  <Button type="submit" size="sm" variant="secondary" className="h-8 w-full sm:w-auto">Filter</Button>
                   {(category || from || to) && (
-                    <Link href="/expenses">
-                      <Button type="button" size="sm" variant="ghost" className="h-8">Reset</Button>
+                    <Link href="/expenses" className="w-full sm:w-auto">
+                      <Button type="button" size="sm" variant="ghost" className="h-8 w-full sm:w-auto">Reset</Button>
                     </Link>
                   )}
                 </form>
               </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">Tanggal</TableHead>
-                    <TableHead>Kategori & Vendor</TableHead>
-                    <TableHead>Keterangan</TableHead>
-                    <TableHead className="text-right">Jumlah</TableHead>
-                    <TableHead className="w-[100px] text-right">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.items.map((e) => (
-                    <TableRow key={e.id} className={editId === e.id ? "bg-muted/50" : ""}>
-                      <TableCell className="text-xs align-top">
-                        {formatDateID(e.occurredAt)}
-                      </TableCell>
-                      <TableCell className="align-top">
-                        <Badge variant="outline" className="mb-1">{e.category}</Badge>
-                        {e.vendor && <div className="text-xs font-medium">{e.vendor}</div>}
-                        <div className="text-[10px] text-muted-foreground uppercase">{e.paymentMethod}</div>
-                      </TableCell>
-                      <TableCell className="max-w-[300px] align-top">
-                        <div className="text-sm line-clamp-2">{e.description}</div>
-                        <div className="flex items-center gap-2 mt-1">
-                          {e.reference && <span className="text-[10px] text-muted-foreground">Ref: {e.reference}</span>}
-                          {e.attachmentUrl && (
-                            <a 
-                              href={e.attachmentUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-[10px] text-blue-600 hover:underline"
-                            >
-                              <Paperclip className="h-3 w-3" /> Bukti
-                            </a>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium text-red-600 align-top">
-                        {formatIDR(e.amount.toString())}
-                      </TableCell>
-                      <TableCell className="text-right align-top">
-                        <div className="flex justify-end gap-1">
-                          <Link href={`/expenses?editId=${e.id}${page ? `&page=${page}` : ""}${category ? `&category=${category}` : ""}${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-amber-600">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <DeleteExpenseButton id={e.id} />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {data.items.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                        Belum ada data pengeluaran.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+              <div className="rounded-md border overflow-hidden">
+                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-muted-foreground/20">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[100px] whitespace-nowrap">Tanggal</TableHead>
+                        <TableHead className="whitespace-nowrap">Kategori & Vendor</TableHead>
+                        <TableHead className="whitespace-nowrap">Keterangan</TableHead>
+                        <TableHead className="text-right whitespace-nowrap">Jumlah</TableHead>
+                        <TableHead className="w-[100px] text-right whitespace-nowrap">Aksi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {data.items.map((e) => (
+                        <TableRow key={e.id} className={editId === e.id ? "bg-muted/50" : ""}>
+                          <TableCell className="text-xs align-top whitespace-nowrap">
+                            {formatDateID(e.occurredAt)}
+                          </TableCell>
+                          <TableCell className="align-top whitespace-nowrap">
+                            <Badge variant="outline" className="mb-1">{e.category}</Badge>
+                            {e.vendor && <div className="text-xs font-medium">{e.vendor}</div>}
+                            <div className="text-[10px] text-muted-foreground uppercase">{e.paymentMethod}</div>
+                          </TableCell>
+                          <TableCell className="min-w-[200px] max-w-[300px] align-top">
+                            <div className="text-sm line-clamp-2">{e.description}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              {e.reference && <span className="text-[10px] text-muted-foreground">Ref: {e.reference}</span>}
+                              {e.attachmentUrl && (
+                                <a 
+                                  href={e.attachmentUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[10px] text-blue-600 hover:underline"
+                                >
+                                  <Paperclip className="h-3 w-3" /> Bukti
+                                </a>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-red-600 align-top whitespace-nowrap">
+                            {formatIDR(e.amount.toString())}
+                          </TableCell>
+                          <TableCell className="text-right align-top">
+                            <div className="flex justify-end gap-1">
+                              <Link href={`/expenses?editId=${e.id}${page ? `&page=${page}` : ""}${category ? `&category=${category}` : ""}${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-amber-600">
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                              <DeleteExpenseButton id={e.id} />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {data.items.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                            Belum ada data pengeluaran.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
 
               {data.totalPages > 1 && (
-                <div className="flex items-center justify-end space-x-2 py-4">
-                  <Link href={`/expenses?page=${data.page - 1}${category ? `&category=${category}` : ""}${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`}>
-                    <Button variant="outline" size="sm" disabled={data.page <= 1}>Sebelumnya</Button>
-                  </Link>
-                  <div className="text-xs text-muted-foreground">Halaman {data.page} dari {data.totalPages}</div>
-                  <Link href={`/expenses?page=${data.page + 1}${category ? `&category=${category}` : ""}${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`}>
-                    <Button variant="outline" size="sm" disabled={data.page >= data.totalPages}>Selanjutnya</Button>
-                  </Link>
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
+                  <div className="text-xs text-muted-foreground order-2 sm:order-1">Halaman {data.page} dari {data.totalPages}</div>
+                  <div className="flex gap-2 w-full sm:w-auto order-1 sm:order-2">
+                    <Link href={`/expenses?page=${data.page - 1}${category ? `&category=${category}` : ""}${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`} className="flex-1 sm:flex-initial">
+                      <Button variant="outline" size="sm" disabled={data.page <= 1} className="w-full">Sebelumnya</Button>
+                    </Link>
+                    <Link href={`/expenses?page=${data.page + 1}${category ? `&category=${category}` : ""}${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`} className="flex-1 sm:flex-initial">
+                      <Button variant="outline" size="sm" disabled={data.page >= data.totalPages} className="w-full">Selanjutnya</Button>
+                    </Link>
+                  </div>
                 </div>
               )}
             </CardContent>
