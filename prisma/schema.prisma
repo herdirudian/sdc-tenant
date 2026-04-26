@@ -1,0 +1,427 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model CompanySettings {
+  id             String        @id @default("default") @db.VarChar(32)
+  companyName    String        @map("company_name")
+  npwp           String?       @db.VarChar(32)
+  address        String?       @db.Text
+  logoUrl        String?       @map("logo_url") @db.VarChar(1024)
+  signatureName  String?       @map("signature_name")
+  signatureTitle String?       @map("signature_title")
+  defaultDueDays Int           @default(14) @map("default_due_days")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  invoiceFooter  String?       @map("invoice_footer") @db.Text
+  invoiceTerms   String?       @map("invoice_terms") @db.Text
+  smtpFrom       String?       @map("smtp_from")
+  smtpHost       String?       @map("smtp_host")
+  smtpPassEnc    String?       @map("smtp_pass_enc") @db.Text
+  smtpPort       Int?          @map("smtp_port")
+  smtpSecure     Boolean?      @map("smtp_secure")
+  smtpUser       String?       @map("smtp_user")
+  letterheadUrl  String?       @map("letterhead_url") @db.VarChar(1024)
+  signatureUrl   String?       @map("signature_url") @db.VarChar(1024)
+  bankAccounts   BankAccount[]
+
+  @@map("company_settings")
+}
+
+model BankAccount {
+  id                String               @id @default(cuid())
+  companySettingsId String               @default("default") @map("company_settings_id") @db.VarChar(32)
+  label             String
+  accountName       String               @map("account_name")
+  accountNumber     String               @map("account_number") @db.VarChar(64)
+  isActive          Boolean              @default(true) @map("is_active")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+  companySettings   CompanySettings      @relation(fields: [companySettingsId], references: [id], onDelete: Cascade)
+  invoices          InvoiceBankAccount[]
+
+  @@index([companySettingsId])
+  @@map("bank_accounts")
+}
+
+model User {
+  id               String            @id @default(cuid())
+  email            String            @unique
+  name             String
+  role             UserRole          @default(STAFF)
+  passwordHash     String            @map("password_hash") @db.VarChar(255)
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  isActive         Boolean           @default(true) @map("is_active")
+  auditLogs        AuditLog[]
+  createdEmails    EmailOutbox[]     @relation("EmailCreatedBy")
+  expenses         Expense[]
+  invoiceFollowUps InvoiceFollowUp[]
+  sessions         Session[]
+
+  @@index([role])
+  @@index([isActive])
+  @@map("users")
+}
+
+model PasswordResetCode {
+  id        String   @id @default(cuid())
+  email     String
+  code      String   @db.VarChar(6)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([email])
+  @@index([code])
+  @@map("password_reset_codes")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model AuditLog {
+  id          String          @id @default(cuid())
+  actorUserId String?         @map("actor_user_id")
+  action      AuditAction
+  entityType  AuditEntityType @map("entity_type")
+  entityId    String?         @map("entity_id") @db.VarChar(64)
+  beforeJson  String?         @map("before_json") @db.LongText
+  afterJson   String?         @map("after_json") @db.LongText
+  ip          String?         @db.VarChar(64)
+  userAgent   String?         @map("user_agent") @db.VarChar(512)
+  createdAt   DateTime        @default(now()) @map("created_at")
+  actorUser   User?           @relation(fields: [actorUserId], references: [id])
+
+  @@index([actorUserId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Client {
+  id          String    @id @default(cuid())
+  name        String
+  email       String?
+  phone       String?   @db.VarChar(50)
+  companyName String?   @map("company_name")
+  npwp        String?   @db.VarChar(32)
+  address     String?   @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  portalToken String?   @unique @map("portal_token") @db.VarChar(64)
+  invoices    Invoice[]
+  projects    Project[]
+
+  @@map("clients")
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  clientId    String        @map("client_id")
+  name        String
+  description String?       @db.Text
+  status      ProjectStatus @default(LEAD)
+  totalValue  Decimal       @default(0.00) @map("total_value") @db.Decimal(18, 2)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  invoices    Invoice[]
+  client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@map("projects")
+}
+
+model Invoice {
+  id                 String                @id @default(cuid())
+  invoiceNumber      String                @unique @map("invoice_number") @db.VarChar(64)
+  clientId           String                @map("client_id")
+  projectId          String?               @map("project_id")
+  type               InvoiceType
+  amountBruto        Decimal               @default(0.00) @map("amount_bruto") @db.Decimal(18, 2)
+  taxPphFinal        Decimal               @default(0.00) @map("tax_pph_final") @db.Decimal(18, 2)
+  isDeductedByClient Boolean               @default(false) @map("is_deducted_by_client")
+  status             InvoiceStatus         @default(UNPAID)
+  dueDate            DateTime?             @map("due_date")
+  paidAt             DateTime?             @map("paid_at")
+  createdAt          DateTime              @default(now()) @map("created_at")
+  updatedAt          DateTime              @updatedAt @map("updated_at")
+  pphAttachmentUrl   String?               @map("pph_attachment_url") @db.VarChar(1024)
+  pphBillingId       String?               @map("pph_billing_id") @db.VarChar(64)
+  pphNtpn            String?               @map("pph_ntpn") @db.VarChar(64)
+  pphPaidAt          DateTime?             @map("pph_paid_at")
+  approvalStatus     InvoiceApprovalStatus @default(DRAFT) @map("approval_status")
+  approvedAt         DateTime?             @map("approved_at")
+  sentAt             DateTime?             @map("sent_at")
+  nextFollowUpAt     DateTime?             @map("next_follow_up_at")
+  footer             String?               @db.Text
+  poReference        String?               @map("po_reference") @db.VarChar(128)
+  template           InvoiceTemplate       @default(DEFAULT)
+  terms              String?               @db.Text
+  emails             EmailOutbox[]
+  attachments        InvoiceAttachment[]
+  bankAccounts       InvoiceBankAccount[]
+  followUps          InvoiceFollowUp[]
+  items              InvoiceItem[]
+  payments           InvoicePayment[]
+  client             Client                @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  project            Project?              @relation(fields: [projectId], references: [id])
+  ledgerEntries      LedgerEntry[]
+
+  @@index([clientId])
+  @@index([projectId])
+  @@index([status])
+  @@index([approvalStatus])
+  @@index([nextFollowUpAt])
+  @@index([template])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String   @map("invoice_id")
+  description String   @db.Text
+  quantity    Decimal  @default(1.00) @db.Decimal(18, 2)
+  price       Decimal  @default(0.00) @db.Decimal(18, 2)
+  amount      Decimal  @default(0.00) @db.Decimal(18, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+model InvoiceBankAccount {
+  id            String      @id @default(cuid())
+  invoiceId     String      @map("invoice_id")
+  bankAccountId String      @map("bank_account_id")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  invoice       Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([invoiceId, bankAccountId])
+  @@index([invoiceId])
+  @@index([bankAccountId])
+  @@map("invoice_bank_accounts")
+}
+
+model InvoiceFollowUp {
+  id              String    @id @default(cuid())
+  invoiceId       String    @map("invoice_id")
+  createdByUserId String?   @map("created_by_user_id")
+  note            String    @db.Text
+  nextFollowUpAt  DateTime? @map("next_follow_up_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  createdByUser   User?     @relation(fields: [createdByUserId], references: [id])
+  invoice         Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([nextFollowUpAt])
+  @@index([createdByUserId], map: "invoice_follow_ups_created_by_user_id_fkey")
+  @@map("invoice_follow_ups")
+}
+
+model InvoicePayment {
+  id          String        @id @default(cuid())
+  invoiceId   String        @map("invoice_id")
+  amount      Decimal       @default(0.00) @db.Decimal(18, 2)
+  paidAt      DateTime      @default(now()) @map("paid_at")
+  method      PaymentMethod @default(TRANSFER)
+  note        String?       @db.Text
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  invoice     Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  ledgerEntry LedgerEntry?
+
+  @@index([invoiceId])
+  @@index([paidAt])
+  @@map("invoice_payments")
+}
+
+model InvoiceAttachment {
+  id        String   @id @default(cuid())
+  invoiceId String   @map("invoice_id")
+  label     String
+  url       String   @db.VarChar(1024)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_attachments")
+}
+
+model EmailOutbox {
+  id                String            @id @default(cuid())
+  type              EmailMessageType
+  status            EmailOutboxStatus @default(PENDING)
+  dedupeKey         String?           @unique @map("dedupe_key")
+  invoiceId         String?           @map("invoice_id")
+  toEmail           String            @map("to_email")
+  subject           String
+  html              String            @db.Text
+  scheduledAt       DateTime          @default(now()) @map("scheduled_at")
+  sendAfter         DateTime?         @map("send_after")
+  attempts          Int               @default(0)
+  lastError         String?           @map("last_error") @db.Text
+  lastAttemptAt     DateTime?         @map("last_attempt_at")
+  sentAt            DateTime?         @map("sent_at")
+  lockedAt          DateTime?         @map("locked_at")
+  lockedBy          String?           @map("locked_by") @db.VarChar(64)
+  providerMessageId String?           @map("provider_message_id")
+  createdByUserId   String?           @map("created_by_user_id")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  attachments       String?           @db.LongText
+  createdByUser     User?             @relation("EmailCreatedBy", fields: [createdByUserId], references: [id])
+  invoice           Invoice?          @relation(fields: [invoiceId], references: [id])
+
+  @@index([status, scheduledAt])
+  @@index([invoiceId])
+  @@index([lockedAt])
+  @@index([createdByUserId], map: "email_outbox_created_by_user_id_fkey")
+  @@map("email_outbox")
+}
+
+model Expense {
+  id              String        @id @default(cuid())
+  occurredAt      DateTime      @map("occurred_at")
+  amount          Decimal       @default(0.00) @db.Decimal(18, 2)
+  category        String        @db.VarChar(64)
+  description     String        @db.Text
+  vendor          String?
+  reference       String?       @db.VarChar(128)
+  paymentMethod   PaymentMethod @default(TRANSFER) @map("payment_method")
+  createdByUserId String?       @map("created_by_user_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  attachmentUrl   String?       @map("attachment_url") @db.VarChar(1024)
+  createdByUser   User?         @relation(fields: [createdByUserId], references: [id])
+  ledgerEntry     LedgerEntry?
+
+  @@index([occurredAt])
+  @@index([category])
+  @@index([createdByUserId], map: "expenses_created_by_user_id_fkey")
+  @@map("expenses")
+}
+
+model LedgerEntry {
+  id          String          @id @default(cuid())
+  type        LedgerEntryType
+  occurredAt  DateTime        @map("occurred_at")
+  amount      Decimal         @default(0.00) @db.Decimal(18, 2)
+  account     String          @db.VarChar(64)
+  description String          @db.Text
+  reference   String?         @db.VarChar(128)
+  invoiceId   String?         @map("invoice_id")
+  paymentId   String?         @unique @map("payment_id")
+  expenseId   String?         @unique @map("expense_id")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  expense     Expense?        @relation(fields: [expenseId], references: [id])
+  invoice     Invoice?        @relation(fields: [invoiceId], references: [id])
+  payment     InvoicePayment? @relation(fields: [paymentId], references: [id])
+
+  @@index([occurredAt])
+  @@index([type])
+  @@index([invoiceId])
+  @@map("ledger_entries")
+}
+
+enum ProjectStatus {
+  LEAD
+  ONGOING
+  COMPLETED
+}
+
+enum InvoiceType {
+  DP
+  PROGRESS
+  FINAL
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PAID
+}
+
+enum InvoiceApprovalStatus {
+  DRAFT
+  APPROVED
+  SENT
+}
+
+enum InvoiceTemplate {
+  DEFAULT
+  MODERN
+}
+
+enum PaymentMethod {
+  TRANSFER
+  CASH
+  OTHER
+}
+
+enum LedgerEntryType {
+  INCOME
+  EXPENSE
+}
+
+enum EmailMessageType {
+  INVOICE_SENT
+  RECEIPT_SENT
+  REMINDER_DUE_SOON
+  REMINDER_DUE_TOMORROW
+  REMINDER_OVERDUE
+}
+
+enum EmailOutboxStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+}
+
+enum UserRole {
+  ADMIN
+  FINANCE
+  STAFF
+}
+
+enum AuditEntityType {
+  CLIENT
+  PROJECT
+  INVOICE
+  PAYMENT
+  SETTINGS
+  BANK_ACCOUNT
+  USER
+  EXPENSE
+  LEDGER_ENTRY
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  MARK_PAID
+  MARK_UNPAID
+  ADD_PAYMENT
+  DELETE_PAYMENT
+  MARK_PPH_PAID
+}

@@ -1,65 +1,395 @@
-import Image from "next/image";
+import Link from "next/link";
 
-export default function Home() {
+import { getDashboardData } from "@/actions/dashboard";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatIDR } from "@/lib/format";
+import { requireRole } from "@/lib/auth";
+import { UserRole } from "@/generated/prisma/enums";
+import { formatDateID } from "@/lib/format";
+import { ArrowUpRight, Receipt, Wallet, Landmark, Bell, TrendingUp, TrendingDown, CircleDollarSign, Briefcase } from "lucide-react";
+import { SimpleBarChart } from "@/components/dashboard-charts";
+import { SyncPaidInvoicesButton } from "@/components/sync-paid-invoices-button";
+
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const user = await requireRole([UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF]);
+  const data = await getDashboardData();
+  const summary = data.summary;
+  const canCreateClient = user.role === UserRole.ADMIN || user.role === UserRole.STAFF;
+  const canCreateInvoice = user.role === UserRole.ADMIN || user.role === UserRole.FINANCE;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Overview ringkas untuk operasional finance dan project.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+          {canCreateInvoice ? (
+            <div className="col-span-2 sm:col-auto">
+              <SyncPaidInvoicesButton />
+            </div>
+          ) : null}
+          {canCreateClient ? (
+            <Link href="/clients/new" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full">Add Client</Button>
+            </Link>
+          ) : null}
+          {canCreateInvoice ? (
+            <Link href="/invoices/new" className="w-full sm:w-auto">
+              <Button className="w-full">Create Invoice</Button>
+            </Link>
+          ) : null}
         </div>
-      </main>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardDescription className="text-xs sm:text-sm">Total Revenue</CardDescription>
+                <CardTitle className="text-lg sm:text-xl">{formatIDR(summary.totalRevenue)}</CardTitle>
+              </div>
+              <div className="rounded-xl border border-border bg-muted p-1.5 sm:p-2 shrink-0">
+                <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0 sm:px-6 sm:pb-6 text-[10px] sm:text-xs text-muted-foreground">
+            Total pendapatan dari invoice PAID.
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardDescription className="text-xs sm:text-sm">Net Profit</CardDescription>
+                <CardTitle className={`text-lg sm:text-xl ${Number(summary.netProfit) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                  {formatIDR(summary.netProfit)}
+                </CardTitle>
+              </div>
+              <div className="rounded-xl border border-border bg-muted p-1.5 sm:p-2 shrink-0">
+                <CircleDollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0 sm:px-6 sm:pb-6 text-[10px] sm:text-xs text-muted-foreground">
+            Revenue dikurangi total pengeluaran.
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardDescription className="text-xs sm:text-sm">Pending Payments</CardDescription>
+                <CardTitle className="text-lg sm:text-xl">{formatIDR(summary.pendingPayments)}</CardTitle>
+              </div>
+              <div className="rounded-xl border border-border bg-muted p-1.5 sm:p-2 shrink-0">
+                <Receipt className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0 sm:px-6 sm:pb-6 text-[10px] sm:text-xs text-muted-foreground">
+            Total tagihan yang belum dibayar (UNPAID).
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardDescription>Active Projects</CardDescription>
+                <CardTitle className="text-xl">{summary.activeProjects}</CardTitle>
+              </div>
+              <div className="rounded-xl border border-border bg-muted p-2">
+                <Briefcase className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="text-xs text-muted-foreground">
+            Proyek dengan status ONGOING.
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardDescription>Tax to Pay (This Month)</CardDescription>
+                <CardTitle className="text-xl">{formatIDR(summary.taxToPayThisMonth)}</CardTitle>
+              </div>
+              <div className="rounded-xl border border-border bg-muted p-2">
+                <Landmark className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="text-xs text-muted-foreground">
+            PPh Final dari invoice yang dibayar bulan ini.
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardDescription className="text-xs sm:text-sm">Total Tax (PPh)</CardDescription>
+                <CardTitle className="text-lg sm:text-xl">{formatIDR(summary.totalTaxToPay)}</CardTitle>
+              </div>
+              <div className="rounded-xl border border-border bg-muted p-1.5 sm:p-2 shrink-0">
+                <Landmark className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0 sm:px-6 sm:pb-6 text-[10px] sm:text-xs text-muted-foreground">
+            Total PPh Final yang belum disetor (semua periode).
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardDescription className="text-xs sm:text-sm">Total Expenses</CardDescription>
+                <CardTitle className="text-lg sm:text-xl">{formatIDR(summary.totalExpenses)}</CardTitle>
+              </div>
+              <div className="rounded-xl border border-border bg-muted p-1.5 sm:p-2 shrink-0">
+                <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0 sm:px-6 sm:pb-6 text-[10px] sm:text-xs text-muted-foreground">
+            Total seluruh pengeluaran operasional.
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Aging Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {[
+              { label: "0-30d", val: summary.agingSummary["0-30"], color: "bg-muted" },
+              { label: "31-60d", val: summary.agingSummary["31-60"], color: "bg-secondary" },
+              { label: "61-90d", val: summary.agingSummary["61-90"], color: "bg-amber-500" },
+              { label: "90d+", val: summary.agingSummary["90+"], color: "bg-destructive" },
+            ].map((b) => (
+              <div key={b.label} className="flex items-center justify-between text-[10px]">
+                <div className="flex items-center gap-1">
+                  <div className={`h-1.5 w-1.5 rounded-full ${b.color}`} />
+                  <span className="text-muted-foreground">{b.label}</span>
+                </div>
+                <span className="font-medium">{formatIDR(b.val)}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-base">Financial Trend</CardTitle>
+                <CardDescription>Income vs Expense (6 Months)</CardDescription>
+              </div>
+              <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-1">
+                  <div className="h-3 w-3 rounded-sm bg-green-500" />
+                  <span>Income</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="h-3 w-3 rounded-sm bg-red-500" />
+                  <span>Expense</span>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <SimpleBarChart data={data.monthlyTrend} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Expense Breakdown</CardTitle>
+            <CardDescription>Top pengeluaran per kategori.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {summary.expenseBreakdown.slice(0, 5).map((item) => (
+              <div key={item.category} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium">{item.category}</span>
+                  <span>{formatIDR(item.amount)}</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div 
+                    className="h-full bg-red-500" 
+                    style={{ 
+                      width: `${(Number(item.amount) / Number(summary.totalExpenses)) * 100}%` 
+                    }} 
+                  />
+                </div>
+              </div>
+            ))}
+            {summary.expenseBreakdown.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">Belum ada data pengeluaran.</p>
+            )}
+            {summary.expenseBreakdown.length > 5 && (
+              <Link href="/expenses">
+                <Button variant="link" size="sm" className="w-full text-xs text-muted-foreground">
+                  Lihat Semua Pengeluaran
+                </Button>
+              </Link>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <CardTitle className="text-base truncate">Recent Invoices</CardTitle>
+                <CardDescription className="text-xs truncate">Invoice terbaru.</CardDescription>
+              </div>
+              <Link href="/invoices" className="shrink-0">
+                <Button variant="outline" size="sm" className="h-8 text-xs px-2 sm:px-3">
+                  See all <ArrowUpRight className="ml-1 h-3 w-3 sm:h-4 sm:w-4" />
+                </Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0 sm:p-6">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[120px] px-2 sm:px-3 sm:w-auto">Invoice</TableHead>
+                    <TableHead className="px-2 sm:px-3">Client</TableHead>
+                    <TableHead className="text-right px-2 sm:px-3">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.recentInvoices.map((inv) => (
+                    <TableRow key={inv.id}>
+                      <TableCell className="font-medium px-2 py-3 sm:px-3">
+                        <Link className="hover:underline block truncate max-w-[110px] sm:max-w-none" href={`/invoices/${inv.id}`}>
+                          {inv.invoiceNumber}
+                        </Link>
+                        <div className="text-[10px] text-muted-foreground">{formatDateID(inv.createdAt)}</div>
+                      </TableCell>
+                      <TableCell className="px-2 py-3 sm:px-3">
+                        <div className="text-xs sm:text-sm line-clamp-2 sm:line-clamp-none">
+                          {inv.client.companyName ?? inv.client.name}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap px-2 py-3 sm:px-3">
+                        <div className="text-xs sm:text-sm font-semibold">
+                          {formatIDR(inv.amountBruto.toString())}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {data.recentInvoices.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center text-sm text-muted-foreground">
+                        No invoices yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-4">
+          <Card>
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <CardTitle className="text-base truncate">Notifications</CardTitle>
+                  <CardDescription className="text-xs truncate">Reminder finance ops.</CardDescription>
+                </div>
+                <Link href="/collections" className="shrink-0">
+                  <Button variant="outline" size="sm" className="h-8 text-xs px-2 sm:px-3">
+                    Open <ArrowUpRight className="ml-1 h-3 w-3 sm:h-4 sm:w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-2 p-3 sm:p-6">
+              {data.notifications.map((n) => (
+                <Link key={n.key} href={n.href} className="rounded-xl border border-border p-2 sm:p-3 hover:bg-muted/50">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="rounded-lg border border-border bg-muted p-1.5 sm:p-2 shrink-0">
+                        <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+                      </div>
+                      <div className="text-xs sm:text-sm font-medium truncate">{n.label}</div>
+                    </div>
+                    <Badge variant="secondary" className="text-[10px]">{n.count}</Badge>
+                  </div>
+                </Link>
+              ))}
+              {data.notifications.length === 0 ? (
+                <div className="rounded-xl border border-border p-3 text-sm text-muted-foreground">
+                  No notifications.
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <CardTitle className="text-base truncate">Activity</CardTitle>
+                  <CardDescription className="text-xs truncate">Audit trail ringkas.</CardDescription>
+                </div>
+                <Link href="/audit-log" className="shrink-0">
+                  <Button variant="outline" size="sm" className="h-8 text-xs px-2 sm:px-3">
+                    Open <ArrowUpRight className="ml-1 h-3 w-3 sm:h-4 sm:w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-2 p-3 sm:p-6">
+              {data.recentActivity.slice(0, 5).map((l) => (
+                <div key={l.id} className="rounded-xl border border-border p-2 sm:p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <Badge variant="secondary" className="text-[9px] sm:text-[10px]">{l.action}</Badge>
+                    <div className="text-[9px] sm:text-[10px] text-muted-foreground">{formatDateID(l.createdAt)}</div>
+                  </div>
+                  <div className="mt-1 text-[11px] sm:text-xs truncate font-medium">
+                    {l.actorUser ? `${l.actorUser.name}` : "-"}
+                  </div>
+                  <div className="text-[9px] sm:text-[10px] text-muted-foreground truncate">
+                    {l.entityType} • {l.entityId ?? "-"}
+                  </div>
+                </div>
+              ))}
+              {data.recentActivity.length === 0 ? (
+                <div className="rounded-xl border border-border p-3 text-sm text-muted-foreground">
+                  No logs yet.
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,41 @@
+import {
+  LayoutDashboard,
+  Users,
+  UserCog,
+  FolderKanban,
+  Receipt,
+  Landmark,
+  HandCoins,
+  BookOpenText,
+  Settings,
+  ScrollText,
+  LogOut,
+  BarChart4,
+  Zap,
+  Loader2,
+  Paperclip,
+  X,
+  Menu,
+} from "lucide-react";
+
+export const ICON_MAP = {
+  dashboard: LayoutDashboard,
+  clients: Users,
+  users: UserCog,
+  projects: FolderKanban,
+  invoices: Receipt,
+  tax: Landmark,
+  collections: HandCoins,
+  ledger: BookOpenText,
+  settings: Settings,
+  audit: ScrollText,
+  logout: LogOut,
+  reports: BarChart4,
+  zap: Zap,
+  loader: Loader2,
+  paperclip: Paperclip,
+  x: X,
+  menu: Menu,
+} as const;
+
+export type IconName = keyof typeof ICON_MAP;
