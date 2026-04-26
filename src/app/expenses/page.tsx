@@ -112,30 +112,30 @@ export default async function ExpensesPage({
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Form Tambah/Edit Expense */}
         <div className="lg:col-span-1">
-          <Card className="sticky top-6">
-            <CardHeader>
+          <Card className="lg:sticky lg:top-6">
+            <CardHeader className="p-4 sm:p-6">
               <CardTitle className="text-lg flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-base sm:text-lg">
                   {editExpense ? (
-                    <Pencil className="h-5 w-5 text-amber-500" />
+                    <Pencil className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500" />
                   ) : (
-                    <Plus className="h-5 w-5 text-red-500" />
+                    <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
                   )}
                   {editExpense ? "Edit Pengeluaran" : "Catat Pengeluaran Baru"}
                 </div>
                 {editExpense && (
                   <Link href="/expenses">
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <X className="h-4 w-4" />
+                    <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
+                      <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </Button>
                   </Link>
                 )}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs sm:text-sm">
                 {editExpense ? "Perbarui rincian biaya operasional." : "Masukkan rincian biaya operasional di sini."}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
               <ExpenseForm editExpense={editExpense} defaultCategories={defaultCategories} />
             </CardContent>
           </Card>
@@ -144,11 +144,11 @@ export default async function ExpensesPage({
         {/* Daftar Expense */}
         <div className="lg:col-span-2 space-y-4">
           <Card>
-            <CardHeader className="pb-3">
+            <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-3">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Filter className="h-5 w-5 text-muted-foreground" /> Riwayat Pengeluaran
+                  <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                    <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" /> Riwayat Pengeluaran
                   </CardTitle>
                 </div>
                 <form method="get" className="flex flex-wrap gap-2 w-full sm:w-auto">
@@ -171,7 +171,7 @@ export default async function ExpensesPage({
                 </form>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
               <div className="rounded-md border overflow-hidden">
                 <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-muted-foreground/20">
                   <Table>

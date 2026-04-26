@@ -32,7 +32,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const items = navItems.filter((i) => i.roles.includes(user.role));
   return (
     <div className="min-h-screen bg-muted/30">
-      <div className="mx-auto flex w-full flex-col gap-3 p-2 sm:gap-4 sm:p-4 md:flex-row md:gap-6 md:p-6">
+      <div className="mx-auto flex w-full flex-col gap-4 p-3 sm:gap-4 sm:p-4 md:flex-row md:gap-6 md:p-6">
         <aside className="hidden w-72 shrink-0 flex-col gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm md:flex print:hidden">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
@@ -95,7 +95,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="rounded-2xl border border-border bg-card shadow-sm print:border-0 print:bg-transparent print:shadow-none">
-            <div className="p-3 sm:p-4 md:p-6">{children}</div>
+            <div className="p-4 sm:p-4 md:p-6">{children}</div>
           </div>
         </main>
       </div>

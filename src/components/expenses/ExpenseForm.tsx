@@ -95,7 +95,7 @@ export function ExpenseForm({ editExpense, defaultCategories }: ExpenseFormProps
         <Button
           type="button"
           variant="outline"
-          className="w-full border-dashed border-red-300 hover:border-red-500 hover:bg-red-50"
+          className="w-full h-10 border-dashed border-red-300 hover:border-red-500 hover:bg-red-50 text-xs sm:text-sm"
           onClick={() => fileInputRef.current?.click()}
           disabled={isScanning}
         >
@@ -113,43 +113,46 @@ export function ExpenseForm({ editExpense, defaultCategories }: ExpenseFormProps
         </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid gap-4">
+      <form onSubmit={handleSubmit} className="grid gap-4 sm:gap-5">
         {editExpense && <input type="hidden" name="id" value={editExpense.id} />}
         <input type="hidden" name="attachmentUrl" value={formData.attachmentUrl} />
         
-        <div className="grid gap-2">
-          <Label htmlFor="occurredAt">Tanggal</Label>
+        <div className="grid gap-1.5 sm:gap-2">
+          <Label htmlFor="occurredAt" className="text-xs sm:text-sm font-medium">Tanggal</Label>
           <Input 
             id="occurredAt" 
             name="occurredAt" 
             type="date" 
             required 
+            className="h-9 sm:h-10 text-sm"
             value={formData.occurredAt}
             onChange={handleInputChange}
           />
         </div>
         
-        <div className="grid gap-2">
-          <Label htmlFor="amount">Jumlah (Rp)</Label>
+        <div className="grid gap-1.5 sm:gap-2">
+          <Label htmlFor="amount" className="text-xs sm:text-sm font-medium">Jumlah (Rp)</Label>
           <Input 
             id="amount" 
             name="amount" 
             type="number" 
             placeholder="Contoh: 500000" 
             required 
+            className="h-9 sm:h-10 text-sm"
             value={formData.amount}
             onChange={handleInputChange}
           />
         </div>
 
-        <div className="grid gap-2">
-          <Label htmlFor="category">Kategori</Label>
+        <div className="grid gap-1.5 sm:gap-2">
+          <Label htmlFor="category" className="text-xs sm:text-sm font-medium">Kategori</Label>
           <Input 
             id="category" 
             name="category" 
             list="category-list" 
             placeholder="Gaji / Sewa / Software / Transport" 
             required 
+            className="h-9 sm:h-10 text-sm"
             value={formData.category}
             onChange={handleInputChange}
           />
@@ -158,12 +161,12 @@ export function ExpenseForm({ editExpense, defaultCategories }: ExpenseFormProps
           </datalist>
         </div>
 
-        <div className="grid gap-2">
-          <Label htmlFor="paymentMethod">Metode Pembayaran</Label>
+        <div className="grid gap-1.5 sm:gap-2">
+          <Label htmlFor="paymentMethod" className="text-xs sm:text-sm font-medium">Metode Pembayaran</Label>
           <select
             id="paymentMethod"
             name="paymentMethod"
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-9 sm:h-10 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             value={formData.paymentMethod}
             onChange={handleInputChange}
           >
@@ -173,35 +176,38 @@ export function ExpenseForm({ editExpense, defaultCategories }: ExpenseFormProps
           </select>
         </div>
 
-        <div className="grid gap-2">
-          <Label htmlFor="vendor">Vendor / Penerima (Opsional)</Label>
+        <div className="grid gap-1.5 sm:gap-2">
+          <Label htmlFor="vendor" className="text-xs sm:text-sm font-medium">Vendor / Penerima (Opsional)</Label>
           <Input 
             id="vendor" 
             name="vendor" 
             placeholder="Contoh: Tokopedia, PLN, Nama Staff" 
+            className="h-9 sm:h-10 text-sm"
             value={formData.vendor}
             onChange={handleInputChange}
           />
         </div>
 
-        <div className="grid gap-2">
-          <Label htmlFor="reference">Referensi / No. Bukti (Opsional)</Label>
+        <div className="grid gap-1.5 sm:gap-2">
+          <Label htmlFor="reference" className="text-xs sm:text-sm font-medium">Referensi / No. Bukti (Opsional)</Label>
           <Input 
             id="reference" 
             name="reference" 
             placeholder="Contoh: No. Invoice Vendor" 
+            className="h-9 sm:h-10 text-sm"
             value={formData.reference}
             onChange={handleInputChange}
           />
         </div>
 
-        <div className="grid gap-2">
-          <Label htmlFor="description">Keterangan</Label>
+        <div className="grid gap-1.5 sm:gap-2">
+          <Label htmlFor="description" className="text-xs sm:text-sm font-medium">Keterangan</Label>
           <Textarea 
             id="description" 
             name="description" 
             placeholder="Contoh: Pembayaran langganan Adobe Creative Cloud" 
             required 
+            className="min-h-[80px] text-sm"
             value={formData.description}
             onChange={handleInputChange}
           />
@@ -223,7 +229,7 @@ export function ExpenseForm({ editExpense, defaultCategories }: ExpenseFormProps
           </div>
         )}
 
-        <Button type="submit" className={`w-full ${editExpense ? "bg-amber-600 hover:bg-amber-700" : "bg-red-600 hover:bg-red-700"} text-white`}>
+        <Button type="submit" className={`w-full h-10 sm:h-11 mt-2 ${editExpense ? "bg-amber-600 hover:bg-amber-700" : "bg-red-600 hover:bg-red-700"} text-white font-medium`}>
           {editExpense ? "Perbarui Pengeluaran" : "Simpan Pengeluaran"}
         </Button>
       </form>
