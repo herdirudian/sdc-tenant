@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { runAutomationCycle } from "@/lib/reminders";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
+export async function GET(req: Request) {
   // Simple security check using secret token
   const authHeader = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
