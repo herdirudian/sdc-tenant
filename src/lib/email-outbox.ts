@@ -190,7 +190,7 @@ export async function enqueueInvoiceEmail(input: {
         toEmail: invoice.client.email,
         subject,
         html,
-        attachments: attachments as any,
+        attachments: JSON.stringify(attachments),
         scheduledAt: input.scheduledAt ?? new Date(),
         createdByUserId: input.createdByUserId ?? null,
       },
@@ -329,7 +329,7 @@ export async function enqueueReceiptEmail(input: {
       toEmail: invoice.client.email,
       subject,
       html,
-      attachments: attachments as any,
+      attachments: JSON.stringify(attachments),
       createdByUserId: input.createdByUserId ?? null,
     },
   });
@@ -491,7 +491,18 @@ export async function processEmailOutbox(input: { limit?: number; workerId?: str
     }
 
     try {
-      const attachments = job.attachments ? (job.attachments as any) : undefined;
+      let attachments: any = undefined;
+      if (job.attachments) {
+        try {
+          attachments = typeof job.attachments === 'string' 
+            ? JSON.parse(job.attachments) 
+            : job.attachments;
+        } catch (e) {
+          console.error(`Failed to parse attachments for job ${job.id}:`, e);
+          attachments = job.attachments;
+        }
+      }
+
       const result = await sendEmail({ 
         to: job.toEmail, 
         subject: job.subject, 
