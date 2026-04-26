@@ -143,7 +143,7 @@ export async function requestPasswordReset(formData: FormData) {
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.USER,
     entityId: user.id,
-    details: "Requested password reset code",
+    afterJson: { note: "Requested password reset code" },
     ip: meta.ip,
     userAgent: meta.userAgent,
   });
