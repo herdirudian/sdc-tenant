@@ -568,6 +568,7 @@ export async function setInvoiceStatus(formData: FormData) {
 
         await tx.ledgerEntry.create({
           data: {
+            tenantId: actor.tenantId,
             type: LedgerEntryType.INCOME,
             occurredAt: paidAt,
             amount: remaining,
@@ -637,6 +638,7 @@ export async function syncPaidInvoices() {
 
       await tx.ledgerEntry.create({
         data: {
+          tenantId: actor.tenantId,
           type: LedgerEntryType.INCOME,
           occurredAt: paidAt,
           amount: inv.amountBruto,
@@ -716,6 +718,7 @@ export async function addInvoicePayment(formData: FormData) {
 
     await tx.ledgerEntry.create({
       data: {
+        tenantId,
         type: LedgerEntryType.INCOME,
         occurredAt: paidAt,
         amount,
