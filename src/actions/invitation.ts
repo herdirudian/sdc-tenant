@@ -76,9 +76,10 @@ export async function acceptInvitation(formData: FormData) {
     const session = await createSession(user.id);
     await setSessionCookie(session);
 
-    // Redirect will be handled by the client component
-    return { success: true };
+    // Redirect directly from server action
+    redirect("/");
   } catch (err) {
+    if ((err as any)?.digest?.startsWith("NEXT_REDIRECT")) throw err;
     console.error("Failed to accept invitation:", err);
     return { error: "Terjadi kesalahan saat memproses pendaftaran." };
   }

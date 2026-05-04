@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 interface InviteAcceptFormProps {
   token: string;
@@ -18,7 +17,6 @@ export function InviteAcceptForm({ token, email }: InviteAcceptFormProps) {
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const router = useRouter();
 
   const handleAccept = async (formData: FormData) => {
     setError(null);
@@ -26,10 +24,8 @@ export function InviteAcceptForm({ token, email }: InviteAcceptFormProps) {
       const result = await acceptInvitation(formData);
       if (result?.error) {
         setError(result.error);
-      } else if (result?.success) {
-        router.push("/");
-        router.refresh();
       }
+      // Success will trigger a redirect from the server action
     });
   };
 
