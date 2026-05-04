@@ -249,8 +249,8 @@ export default async function InvoiceDetailPage({
                     <tr>
                       <td className="px-4 py-2">{invoice.project?.name ?? "Services"}</td>
                       <td className="px-4 py-2 text-right">1</td>
-                      <td className="px-4 py-2 text-right">{formatIDR(bruto)}</td>
-                      <td className="px-4 py-2 text-right font-medium">{formatIDR(bruto)}</td>
+                      <td className="px-4 py-2 text-right">{formatIDR(dpp)}</td>
+                      <td className="px-4 py-2 text-right font-medium">{formatIDR(dpp)}</td>
                     </tr>
                   )}
                 </tbody>
