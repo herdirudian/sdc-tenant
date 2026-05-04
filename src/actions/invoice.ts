@@ -718,7 +718,7 @@ export async function addInvoicePayment(formData: FormData) {
 
     await tx.ledgerEntry.create({
       data: {
-        tenantId,
+        tenantId: actor.tenantId,
         type: LedgerEntryType.INCOME,
         occurredAt: paidAt,
         amount,
