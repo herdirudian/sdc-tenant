@@ -144,6 +144,7 @@ export async function requestPasswordReset(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: user.tenantId,
     actorUserId: user.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.USER,
