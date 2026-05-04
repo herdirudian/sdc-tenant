@@ -55,11 +55,21 @@ export async function enqueueInvoiceEmail(input: {
     pdfBuffer = await generateInvoicePdf(
       {
         invoiceNumber: invoice.invoiceNumber,
+        taxInvoiceNumber: invoice.taxInvoiceNumber,
         createdAt: invoice.createdAt,
         dueDate: invoice.dueDate,
         type: invoice.type,
         poReference: invoice.poReference,
+        taxMethod: invoice.taxMethod,
         amountBruto: Number(invoice.amountBruto),
+        taxPpnRate: Number(invoice.taxPpnRate),
+        taxPpnAmount: Number(invoice.taxPpnAmount),
+        taxPphRate: Number(invoice.taxPphRate),
+        taxPphAmount: Number(invoice.taxPphAmount),
+        taxPphType: invoice.taxPphType,
+        taxOtherRate: Number(invoice.taxOtherRate),
+        taxOtherAmount: Number(invoice.taxOtherAmount),
+        taxOtherLabel: invoice.taxOtherLabel,
         taxPphFinal: Number(invoice.taxPphFinal),
         isDeductedByClient: invoice.isDeductedByClient,
         client: {
