@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { SubscriptionStatus, PaymentStatus } from "@/generated/prisma/client";
-import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   const body = await req.json();
@@ -8,7 +7,7 @@ export async function POST(req: Request) {
 
   // Verify callback token if you have one set in Xendit dashboard
   if (process.env.XENDIT_CALLBACK_TOKEN && xenditCallbackToken !== process.env.XENDIT_CALLBACK_TOKEN) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { external_id, status, amount, payment_method, paid_at } = body;
@@ -66,5 +65,5 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ success: true });
+  return Response.json({ success: true });
 }
