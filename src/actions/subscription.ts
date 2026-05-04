@@ -37,8 +37,9 @@ export async function createSubscriptionInvoice() {
     
     redirect(xenditInvoice.invoice_url);
   } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     console.error("Xendit subscription error:", error);
-    return { error: "Gagal membuat invoice pembayaran" };
+    redirect("/checkout?sub=error");
   }
 }
 
@@ -47,7 +48,7 @@ export async function startFreeTrial() {
   const globalSettings = await getGlobalSettings();
 
   if (subscription && subscription.status !== SubscriptionStatus.INACTIVE) {
-    return { error: "Trial sudah digunakan atau akun sudah aktif" };
+    redirect("/checkout?sub=already_active");
   }
 
   const expiresAt = new Date();
