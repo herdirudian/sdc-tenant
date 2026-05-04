@@ -200,7 +200,7 @@ export default async function AdminDashboardPage({
                       <TableCell>
                         <Badge variant={
                           payment.status === "PAID" ? "success" : 
-                          payment.status === "PENDING" ? "secondary" : "destructive"
+                          payment.status === "PENDING" ? "secondary" : "danger"
                         }>
                           {payment.status}
                         </Badge>
