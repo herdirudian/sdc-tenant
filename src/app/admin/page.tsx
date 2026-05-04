@@ -253,8 +253,8 @@ export default async function AdminDashboardPage({
                       <TableCell className="font-medium text-xs">{log.tenant.name}</TableCell>
                       <TableCell>
                         <div className="flex flex-col text-xs">
-                          <span>{log.actorUser.name}</span>
-                          <span className="text-muted-foreground">{log.actorUser.email}</span>
+                          <span>{log.actorUser?.name || "System"}</span>
+                          <span className="text-muted-foreground">{log.actorUser?.email || "-"}</span>
                         </div>
                       </TableCell>
                       <TableCell>
