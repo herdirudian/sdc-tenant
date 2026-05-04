@@ -170,7 +170,6 @@ export async function updateGlobalSettings(formData: FormData) {
 
   revalidatePath("/admin");
   revalidatePath("/");
-  return { success: true };
 }
 
 export async function getGlobalAuditLogs(params: { q?: string; page?: number }) {
