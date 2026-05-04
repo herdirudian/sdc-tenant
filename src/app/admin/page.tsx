@@ -262,7 +262,7 @@ export default async function AdminDashboardPage({
                       </TableCell>
                       <TableCell className="text-xs">
                         <span className="font-medium">{log.entityType}</span>
-                        <span className="ml-2 text-muted-foreground">({log.entityId.substring(0, 8)}...)</span>
+                        <span className="ml-2 text-muted-foreground">({log.entityId?.substring(0, 8) || "N/A"}...)</span>
                       </TableCell>
                     </TableRow>
                   ))}
