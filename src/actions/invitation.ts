@@ -74,7 +74,7 @@ export async function acceptInvitation(formData: FormData) {
 
     // Create session and login
     const session = await createSession(user.id);
-    await setSessionCookie(session.token);
+    await setSessionCookie(session);
 
     // Redirect will be handled by the client component
     return { success: true };
