@@ -46,7 +46,7 @@ export async function startFreeTrial() {
   const { tenantId, subscription } = await requireTenant();
   const globalSettings = await getGlobalSettings();
 
-  if (subscription && subscription.status !== "INACTIVE") {
+  if (subscription && subscription.status !== SubscriptionStatus.INACTIVE) {
     return { error: "Trial sudah digunakan atau akun sudah aktif" };
   }
 
