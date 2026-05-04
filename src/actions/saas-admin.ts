@@ -113,7 +113,7 @@ export async function updateTenantSubscriptionManual(formData: FormData) {
     }
   });
 
-  return { success: true };
+  revalidatePath(`/admin/tenants/${tenantId}`);
 }
 
 export async function impersonateUser(userId: string) {
