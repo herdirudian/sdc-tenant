@@ -34,7 +34,6 @@ export async function addInvoiceFollowUp(formData: FormData) {
   await prisma.$transaction([
     prisma.invoiceFollowUp.create({
       data: {
-        tenantId: actor.tenantId,
         invoiceId: parsed.data.invoiceId,
         createdByUserId: actor.id,
         note: parsed.data.note,
