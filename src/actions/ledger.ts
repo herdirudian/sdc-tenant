@@ -81,6 +81,7 @@ export async function backfillLedgerFromPayments() {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.CREATE,
     entityType: AuditEntityType.LEDGER_ENTRY,

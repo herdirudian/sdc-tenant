@@ -37,6 +37,7 @@ export async function sendInvoiceEmail(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.INVOICE,
@@ -71,6 +72,7 @@ export async function sendReceiptEmail(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.INVOICE,

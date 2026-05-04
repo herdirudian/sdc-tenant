@@ -448,6 +448,7 @@ export async function approveInvoice(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.INVOICE,
@@ -778,6 +779,7 @@ export async function deleteInvoicePayment(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.DELETE_PAYMENT,
     entityType: AuditEntityType.PAYMENT,
@@ -830,6 +832,7 @@ export async function addInvoiceAttachment(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.CREATE,
     entityType: AuditEntityType.INVOICE,

@@ -48,6 +48,7 @@ export async function addInvoiceFollowUp(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.INVOICE,
