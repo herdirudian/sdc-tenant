@@ -270,8 +270,8 @@ export default async function InvoicePrintPage({
                               <div className="text-[9px] text-muted-foreground italic leading-none">{invoice.type}</div>
                             </TableCell>
                             <TableCell className="text-right p-1 py-3 text-[11px]">1</TableCell>
-                            <TableCell className="text-right p-1 py-3 text-[11px]">{formatIDR(bruto)}</TableCell>
-                            <TableCell className="text-right p-1 py-3 font-semibold text-[12px]">{formatIDR(bruto)}</TableCell>
+                            <TableCell className="text-right p-1 py-3 text-[11px]">{formatIDR(dpp)}</TableCell>
+                            <TableCell className="text-right p-1 py-3 font-semibold text-[12px]">{formatIDR(dpp)}</TableCell>
                           </TableRow>
                         )}
                         
