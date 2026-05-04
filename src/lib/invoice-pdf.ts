@@ -112,6 +112,8 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
 
 
     // Header - Invoice Title
+    const brandColor = "#1e40af"; // Deep blue to match logo
+
     doc.fillColor("#000000");
     doc.fontSize(20).font(getFont(true)).text("INVOICE", 40, 160, { align: "right" });
     doc.fontSize(10).font(getFont()).text(invoice.invoiceNumber, { align: "right" });
@@ -127,7 +129,6 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
     // Bill From & Bill To
     const billTop = doc.y;
     const col2X = 320;
-    const brandColor = "#1e40af"; // Deep blue to match logo
 
     // Bill From
     doc.fillColor(brandColor).fontSize(10).font(getFont(true)).text("BILL FROM", 40, billTop);
