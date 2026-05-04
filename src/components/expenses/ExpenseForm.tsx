@@ -31,19 +31,11 @@ export function ExpenseForm({ editExpense, defaultCategories }: ExpenseFormProps
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const submitFormData = new FormData(e.currentTarget);
-    
-    // Add attachmentUrl to formData if it exists
-    if (formData.attachmentUrl) {
-      submitFormData.set("attachmentUrl", formData.attachmentUrl);
-    }
-
+  const handleSubmit = async (formDataArg: FormData) => {
     if (editExpense) {
-      await updateExpenseAction(submitFormData);
+      await updateExpenseAction(formDataArg);
     } else {
-      await createExpenseAction(submitFormData);
+      await createExpenseAction(formDataArg);
     }
   };
 
