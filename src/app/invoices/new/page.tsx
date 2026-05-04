@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { requireRole } from "@/lib/auth";
-import { InvoiceTemplate, InvoiceType, UserRole } from "@/generated/prisma/client";
+import { InvoiceTemplate, InvoiceType, UserRole, TaxMethod } from "@/generated/prisma/client";
+import { InvoiceTaxSection } from "./invoice-tax-section";
 
 export const dynamic = "force-dynamic";
 
@@ -34,13 +35,23 @@ export default async function NewInvoicePage({
         ? "Nomor invoice sedang digunakan. Silakan submit ulang."
         : null;
 
+  const sanitizedClients = clients.map(c => ({
+    id: c.id,
+    name: c.name,
+    companyName: c.companyName,
+    defaultTaxMethod: c.defaultTaxMethod || "EXCLUSIVE",
+    defaultPpnRate: (c.defaultPpnRate ?? "0").toString(),
+    defaultPphRate: (c.defaultPphRate ?? "0").toString(),
+    defaultPphType: c.defaultPphType,
+  }));
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">New Invoice</h1>
           <p className="text-sm text-muted-foreground">
-            Generates invoice number and calculates PPh Final 0.5% automatically.
+            Sistem invoice profesional dengan dukungan multi-pajak dan E-Faktur.
           </p>
         </div>
         <Link href="/invoices">
@@ -89,27 +100,10 @@ export default async function NewInvoicePage({
           </div>
         </div>
 
-        <div className="grid gap-2">
-          <Label htmlFor="clientId">Client</Label>
-          <select
-            id="clientId"
-            name="clientId"
-            required
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            defaultValue={defaultClientId}
-          >
-            {clients.length === 0 ? (
-              <option value="" disabled>
-                Create a client first
-              </option>
-            ) : null}
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.companyName ? `${c.companyName} — ${c.name}` : c.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <InvoiceTaxSection 
+          clients={sanitizedClients} 
+          initialClientId={defaultClientId} 
+        />
 
         <div className="grid gap-2">
           <Label htmlFor="projectId">Project (optional)</Label>
@@ -136,11 +130,10 @@ export default async function NewInvoicePage({
               name="type"
               required
               className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              defaultValue={InvoiceType.DP}
+              defaultValue={InvoiceType.PROFESSIONAL}
             >
-              <option value={InvoiceType.DP}>DP</option>
-              <option value={InvoiceType.PROGRESS}>PROGRESS</option>
-              <option value={InvoiceType.FINAL}>FINAL</option>
+              <option value={InvoiceType.PROFESSIONAL}>PROFESSIONAL</option>
+              <option value={InvoiceType.SIMPLE}>SIMPLE</option>
             </select>
           </div>
           <div className="grid gap-2">

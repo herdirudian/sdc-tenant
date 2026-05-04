@@ -1,5 +1,8 @@
 import { createBankAccount, deleteBankAccount, getCompanySettings, testSmtpSettings, toggleBankAccount, updateCompanySettings, updateSmtpSettings } from "@/actions/settings";
-import { requireRole } from "@/lib/auth";
+import { createSubscriptionInvoice } from "@/actions/subscription";
+import { requireTenant, requireSubscription } from "@/lib/auth";
+import { getGlobalSettings } from "@/actions/saas-admin";
+import { formatIDR } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,25 +17,34 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; msg?: string; saved?: string; smtpTest?: string }>;
+  searchParams: Promise<{ error?: string; msg?: string; saved?: string; smtpTest?: string; sub?: string }>;
 }) {
-  await requireRole([UserRole.ADMIN]);
-  const { error, msg, saved, smtpTest } = await searchParams;
+  await requireSubscription();
+  const { tenantId, user, subscription } = await requireTenant();
+  if (user.role !== UserRole.ADMIN) redirect("/");
+
+  const { error, msg, saved, smtpTest, sub } = await searchParams;
   const settings = await getCompanySettings();
+  const globalSettings = await getGlobalSettings();
 
   const outboxStats = await prisma.emailOutbox.groupBy({
     by: ["status"],
+    where: { tenantId },
     _count: true,
   });
 
   const recentFailures = await prisma.emailOutbox.findMany({
-    where: { status: EmailOutboxStatus.FAILED },
+    where: { status: EmailOutboxStatus.FAILED, tenantId },
     orderBy: { lastAttemptAt: "desc" },
     take: 5,
   });
 
   const message =
-    saved === "smtp"
+    sub === "success"
+      ? "Pembayaran langganan berhasil! Status akan segera diperbarui."
+      : sub === "failed"
+        ? "Pembayaran langganan gagal atau dibatalkan."
+        : saved === "smtp"
       ? "SMTP settings saved."
       : smtpTest === "ok"
         ? "SMTP test email sent."
@@ -62,6 +74,40 @@ export default async function SettingsPage({
           {message}
         </div>
       ) : null}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Subscription</CardTitle>
+          <CardDescription>Status langganan sistem Anda.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between rounded-lg border border-border p-4">
+            <div>
+              <div className="text-sm font-medium">Status Langganan</div>
+              <div className="mt-1 flex items-center gap-2">
+                <Badge variant={subscription?.status === "ACTIVE" ? "success" : "secondary"}>
+                  {subscription?.status || "TRIAL"}
+                </Badge>
+                {subscription?.expiresAt && (
+                  <span className="text-xs text-muted-foreground">
+                    Berakhir pada {subscription.expiresAt.toLocaleDateString("id-ID")}
+                  </span>
+                )}
+              </div>
+            </div>
+            {subscription?.status !== "ACTIVE" && (
+              <form action={createSubscriptionInvoice}>
+                <Button type="submit">Bayar Langganan ({formatIDR(Number(globalSettings.subscriptionPrice))} / bln)</Button>
+              </form>
+            )}
+            {subscription?.status === "ACTIVE" && (
+              <form action={createSubscriptionInvoice}>
+                <Button type="submit" variant="outline">Perpanjang Langganan ({formatIDR(Number(globalSettings.subscriptionPrice))})</Button>
+              </form>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -109,17 +155,6 @@ export default async function SettingsPage({
               <div className="grid gap-2">
                 <Label htmlFor="logoFile">Upload Logo</Label>
                 <Input id="logoFile" name="logoFile" type="file" accept="image/*" />
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="letterheadUrl">Letterhead URL</Label>
-                <Input id="letterheadUrl" name="letterheadUrl" defaultValue={settings.letterheadUrl ?? ""} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="letterheadFile">Upload Letterhead</Label>
-                <Input id="letterheadFile" name="letterheadFile" type="file" accept="image/*" />
               </div>
             </div>
 

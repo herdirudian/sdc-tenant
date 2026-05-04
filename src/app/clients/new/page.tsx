@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { UserRole } from "@/generated/prisma/client";
+import { UserRole, TaxMethod } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +55,44 @@ export default async function NewClientPage() {
         <div className="grid gap-2">
           <Label htmlFor="address">Address</Label>
           <Textarea id="address" name="address" placeholder="Address" />
+        </div>
+
+        <div className="rounded-xl border border-border p-4 bg-blue-50/30">
+          <div className="text-sm font-semibold flex items-center gap-2 mb-3 text-blue-700">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold italic">%</span>
+            Default Tax Settings (Template)
+          </div>
+          <div className="grid gap-4">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="defaultTaxMethod">Default Tax Method</Label>
+                <select
+                  id="defaultTaxMethod"
+                  name="defaultTaxMethod"
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  defaultValue={TaxMethod.EXCLUSIVE}
+                >
+                  <option value={TaxMethod.EXCLUSIVE}>EXCLUSIVE (Tax added to total)</option>
+                  <option value={TaxMethod.INCLUSIVE}>INCLUSIVE (Tax included in price)</option>
+                </select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="defaultPpnRate">Default PPN (%)</Label>
+                <Input id="defaultPpnRate" name="defaultPpnRate" type="number" step="0.1" defaultValue="0" />
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="defaultPphRate">Default PPh (%)</Label>
+                <Input id="defaultPphRate" name="defaultPphRate" type="number" step="0.1" defaultValue="0" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="defaultPphType">Default PPh Label</Label>
+                <Input id="defaultPphType" name="defaultPphType" placeholder="e.g. PPh 23" />
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center justify-end gap-2 pt-2">

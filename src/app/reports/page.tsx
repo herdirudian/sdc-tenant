@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth";
+import { requireRole, requireSubscription } from "@/lib/auth";
 import { UserRole } from "@/generated/prisma/client";
 import { FinancialReportsUI } from "@/components/reports/FinancialReportsUI";
 import { ArrowLeft } from "lucide-react";
@@ -8,6 +8,7 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
+  await requireSubscription();
   await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
 
   return (

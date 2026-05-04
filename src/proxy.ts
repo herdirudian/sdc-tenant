@@ -50,11 +50,38 @@ async function verifySessionCookie(value: string) {
   return true;
 }
 
-export async function proxy(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+import { getGlobalSettings } from "./actions/saas-admin";
+import { getSession } from "./lib/auth";
+
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // 1. Maintenance Mode Check
+  // Skip check for static assets, API, and System Admin
+  if (
+    !pathname.startsWith("/_next") &&
+    !pathname.startsWith("/api") &&
+    pathname !== "/favicon.ico"
+  ) {
+    const settings = await getGlobalSettings();
+    const session = await getSession();
+    const ownerEmail = process.env.ADMIN_EMAIL || "admin@sdc.local";
+
+    if (settings.maintenanceMode && session?.user.email !== ownerEmail) {
+      // Redirect to maintenance page if not already there
+      if (pathname !== "/maintenance") {
+        return NextResponse.redirect(new URL("/maintenance", request.url));
+      }
+    } else if (!settings.maintenanceMode && pathname === "/maintenance") {
+      // Redirect back to home if maintenance mode is OFF but user is on /maintenance page
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  }
 
   if (
     pathname.startsWith("/login") ||
+    pathname.startsWith("/register") ||
+    pathname.startsWith("/checkout") ||
     pathname.startsWith("/portal") ||
     pathname.includes("/print") ||
     pathname.includes("/receipt") ||
@@ -65,14 +92,30 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const session = req.cookies.get(SESSION_COOKIE)?.value;
-  if (!session) return NextResponse.redirect(new URL("/login", req.url));
+  const sessionCookie = request.cookies.get(SESSION_COOKIE)?.value;
+  if (!sessionCookie) {
+    if (pathname === "/") return NextResponse.next(); // Show landing page
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
 
-  const ok = await verifySessionCookie(session);
+  const ok = await verifySessionCookie(sessionCookie);
   if (!ok) {
-    const res = NextResponse.redirect(new URL("/login", req.url));
+    const res = NextResponse.redirect(new URL("/login", request.url));
     res.cookies.set(SESSION_COOKIE, "", { expires: new Date(0), path: "/" });
     return res;
+  }
+
+  // 3. Subscription Check for Protected Routes
+  const session = await getSession();
+  if (session) {
+    const sub = session.user.tenant.subscription;
+    const isInactive = !sub || (sub.status !== "ACTIVE" && sub.status !== "TRIAL");
+    const isOwner = session.user.email === (process.env.ADMIN_EMAIL || "admin@sdc.local");
+
+    // Block access to sub-pages if inactive (except for landing page and checkout)
+    if (isInactive && !isOwner && pathname !== "/" && pathname !== "/checkout") {
+      return NextResponse.redirect(new URL("/checkout", request.url));
+    }
   }
 
   return NextResponse.next();

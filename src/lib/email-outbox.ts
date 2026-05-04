@@ -34,8 +34,8 @@ export async function enqueueInvoiceEmail(input: {
     throw new Error(`Email client "${invoice.client.name}" belum diisi. Silakan edit data client dan tambahkan email.`);
   }
 
-  const settings = await prisma.companySettings.findUnique({
-    where: { id: "default" },
+  const settings = await prisma.companySettings.findFirst({
+    where: { tenantId: invoice.tenantId },
     select: { 
       companyName: true,
       address: true,
@@ -198,12 +198,34 @@ export async function enqueueInvoiceEmail(input: {
   } catch (err) {
     console.error("Prisma error in enqueueInvoiceEmail:", err);
     const errorMessage = err instanceof Error ? err.message : String(err);
-    
     if (errorMessage.includes("ECONNRESET") || errorMessage.includes("connection closed")) {
       throw new Error(`Database connection closed (ECONNRESET/Closed). Sistem telah mencoba menyimpan PDF ke disk untuk mengurangi beban database, namun sepertinya database tetap memutus koneksi. \n\nSOLUSI:\n1. Restart MySQL di XAMPP.\n2. Jika masih gagal, naikkan 'max_allowed_packet' di my.ini menjadi 64M.\n3. Kompres gambar logo/kop surat agar ukuran PDF tidak membengkak.`);
     }
     throw err;
   }
+}
+
+export async function enqueueSystemEmail(input: {
+  tenantId: string;
+  toEmail: string;
+  subject: string;
+  html: string;
+  type: EmailMessageType;
+  dedupeKey?: string | null;
+  scheduledAt?: Date;
+}) {
+  return await prisma.emailOutbox.create({
+    data: {
+      tenantId: input.tenantId,
+      toEmail: input.toEmail,
+      subject: input.subject,
+      html: input.html,
+      type: input.type,
+      status: EmailOutboxStatus.PENDING,
+      dedupeKey: input.dedupeKey ?? null,
+      scheduledAt: input.scheduledAt ?? new Date(),
+    },
+  });
 }
 
 export async function enqueueReceiptEmail(input: {
@@ -223,8 +245,8 @@ export async function enqueueReceiptEmail(input: {
     throw new Error(`Email client "${invoice.client.name}" belum diisi. Silakan edit data client dan tambahkan email.`);
   }
 
-  const settings = await prisma.companySettings.findUnique({
-    where: { id: "default" },
+  const settings = await prisma.companySettings.findFirst({
+    where: { tenantId: invoice.tenantId },
     select: { 
       companyName: true,
       address: true,
@@ -504,6 +526,7 @@ export async function processEmailOutbox(input: { limit?: number; workerId?: str
       }
 
       const result = await sendEmail({ 
+        tenantId: job.tenantId,
         to: job.toEmail, 
         subject: job.subject, 
         html: job.html,

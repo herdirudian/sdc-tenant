@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getRequestMeta, requireRole } from "@/lib/auth";
+import { getRequestMeta, requireRole, requireTenant } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
 import { enqueueInvoiceEmail } from "@/lib/email-outbox";
 import {
@@ -15,6 +15,7 @@ import {
   LedgerEntryType,
   PaymentMethod,
   Prisma,
+  TaxMethod,
   UserRole,
 } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
@@ -29,6 +30,8 @@ const invoiceSchema = z.object({
   projectId: z.string().optional().or(z.literal("")),
   type: z.nativeEnum(InvoiceType),
   template: z.nativeEnum(InvoiceTemplate).default(InvoiceTemplate.DEFAULT),
+  taxMethod: z.nativeEnum(TaxMethod).default(TaxMethod.EXCLUSIVE),
+  taxInvoiceNumber: z.string().trim().optional().or(z.literal("")),
   poReference: z.string().trim().optional().or(z.literal("")),
   terms: z.string().trim().optional().or(z.literal("")),
   footer: z.string().trim().optional().or(z.literal("")),
@@ -38,6 +41,11 @@ const invoiceSchema = z.object({
     quantity: z.string().transform((v) => new Prisma.Decimal(v || "1")),
     price: z.string().transform((v) => new Prisma.Decimal(v || "0")),
   })).min(1),
+  taxPpnRate: z.string().transform((v) => new Prisma.Decimal(v || "0")),
+  taxPphRate: z.string().transform((v) => new Prisma.Decimal(v || "0")),
+  taxPphType: z.string().trim().optional().or(z.literal("")),
+  taxOtherRate: z.string().transform((v) => new Prisma.Decimal(v || "0")),
+  taxOtherLabel: z.string().trim().optional().or(z.literal("")),
   isDeductedByClient: z.boolean().default(false),
   dueDate: z.string().optional().or(z.literal("")),
 });
@@ -162,12 +170,15 @@ async function tryDeletePublicFile(url: string) {
   await unlink(diskPath).catch(() => undefined);
 }
 
-async function generateInvoiceNumber() {
+async function generateInvoiceNumber(tenantId: string) {
   const year = new Date().getFullYear();
   const prefix = `INV/SDC/${year}/`;
 
   const latest = await prisma.invoice.findFirst({
-    where: { invoiceNumber: { startsWith: prefix } },
+    where: { 
+      tenantId,
+      invoiceNumber: { startsWith: prefix } 
+    },
     orderBy: { createdAt: "desc" },
     select: { invoiceNumber: true },
   });
@@ -180,7 +191,8 @@ async function generateInvoiceNumber() {
 }
 
 export async function createInvoice(formData: FormData) {
-  const actor = await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
+  const { tenantId, user: actor } = await requireTenant();
+  if (actor.role === UserRole.STAFF) redirect("/invoices?error=forbidden");
 
   // Extract items from formData
   const itemDescriptions = formData.getAll("itemDescription[]");
@@ -203,6 +215,13 @@ export async function createInvoice(formData: FormData) {
     footer: formData.get("footer"),
     bankAccountIds: formData.getAll("bankAccountIds"),
     items,
+    taxPpnRate: formData.get("taxPpnRate"),
+    taxPphRate: formData.get("taxPphRate"),
+    taxPphType: formData.get("taxPphType"),
+    taxOtherRate: formData.get("taxOtherRate"),
+    taxOtherLabel: formData.get("taxOtherLabel"),
+    taxMethod: formData.get("taxMethod"),
+    taxInvoiceNumber: formData.get("taxInvoiceNumber"),
     isDeductedByClient: formData.get("isDeductedByClient") === "on",
     dueDate: formData.get("dueDate"),
   });
@@ -218,9 +237,30 @@ export async function createInvoice(formData: FormData) {
   }));
 
   const amountBruto = itemsWithAmount.reduce((acc, item) => acc.add(item.amount), new Prisma.Decimal(0));
+  
+  // Tax Calculations
+  const taxPpnRate = parsed.data.taxPpnRate;
+  const taxPphRate = parsed.data.taxPphRate;
+  const taxOtherRate = parsed.data.taxOtherRate;
+  const isInclusive = parsed.data.taxMethod === TaxMethod.INCLUSIVE;
+
+  let dpp = amountBruto;
+  if (isInclusive) {
+    const ppnFactor = new Prisma.Decimal(1).add(taxPpnRate.div(100));
+    dpp = amountBruto.div(ppnFactor).toDecimalPlaces(2);
+  }
+
+  const taxPpnAmount = dpp.mul(taxPpnRate.div(100)).toDecimalPlaces(2);
+  const taxPphAmount = dpp.mul(taxPphRate.div(100)).toDecimalPlaces(2);
+  const taxOtherAmount = dpp.mul(taxOtherRate.div(100)).toDecimalPlaces(2);
+
+  // Total Tagihan yang harus dibayar klien (Net of PPh)
+  const amountPayable = dpp.add(taxPpnAmount).add(taxOtherAmount).sub(taxPphAmount);
+  
+  // Backwards compatibility
   const taxPphFinal = calcPphFinal(amountBruto);
-  const settings = await prisma.companySettings.findUnique({
-    where: { id: "default" },
+  const settings = await prisma.companySettings.findFirst({
+    where: { tenantId },
     select: { defaultDueDays: true },
   });
 
@@ -238,20 +278,31 @@ export async function createInvoice(formData: FormData) {
   const bankAccountIds = Array.from(new Set(parsed.data.bankAccountIds)).filter(Boolean);
 
   for (let attempt = 0; attempt < 20; attempt++) {
-    const invoiceNumber = await generateInvoiceNumber();
+    const invoiceNumber = await generateInvoiceNumber(tenantId);
     try {
       const created = await prisma.$transaction(async (tx) => {
         const inv = await tx.invoice.create({
           data: {
+            tenantId,
             invoiceNumber,
             clientId: parsed.data.clientId,
             projectId: parsed.data.projectId === "" ? null : parsed.data.projectId,
             type: parsed.data.type,
             template: parsed.data.template,
+            taxMethod: parsed.data.taxMethod,
+            taxInvoiceNumber: parsed.data.taxInvoiceNumber === "" ? null : parsed.data.taxInvoiceNumber,
             poReference: parsed.data.poReference === "" ? null : parsed.data.poReference,
             terms: parsed.data.terms === "" ? null : parsed.data.terms,
             footer: parsed.data.footer === "" ? null : parsed.data.footer,
-            amountBruto,
+            amountBruto: amountPayable,
+            taxPpnRate,
+            taxPpnAmount,
+            taxPphRate,
+            taxPphAmount,
+            taxPphType: parsed.data.taxPphType === "" ? null : parsed.data.taxPphType,
+            taxOtherRate,
+            taxOtherAmount,
+            taxOtherLabel: parsed.data.taxOtherLabel === "" ? null : parsed.data.taxOtherLabel,
             taxPphFinal,
             isDeductedByClient: parsed.data.isDeductedByClient,
             approvalStatus: InvoiceApprovalStatus.DRAFT,
@@ -298,6 +349,7 @@ export async function createInvoice(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId,
     actorUserId: actor.id,
     action: AuditAction.CREATE,
     entityType: AuditEntityType.INVOICE,
@@ -359,18 +411,13 @@ export async function updateInvoicePresentation(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.INVOICE,
-    entityId: after.id,
-    beforeJson: before ?? undefined,
-    afterJson: {
-      template: after.template,
-      poReference: after.poReference,
-      terms: after.terms,
-      footer: after.footer,
-      bankAccountIds,
-    },
+    entityId: parsed.data.invoiceId,
+    beforeJson: { template: before.template, poReference: before.poReference, terms: before.terms, footer: before.footer, bankAccountIds: before.bankAccounts.map(b => b.bankAccountId) },
+    afterJson: { template: after.template, poReference: after.poReference, terms: after.terms, footer: after.footer, bankAccountIds },
     ip: meta.ip,
     userAgent: meta.userAgent,
   });
@@ -457,6 +504,7 @@ export async function markInvoiceSent(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.INVOICE,
@@ -535,6 +583,7 @@ export async function setInvoiceStatus(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: status === InvoiceStatus.PAID ? AuditAction.MARK_PAID : AuditAction.MARK_UNPAID,
     entityType: AuditEntityType.INVOICE,
@@ -604,6 +653,7 @@ export async function syncPaidInvoices() {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.INVOICE,
@@ -681,6 +731,7 @@ export async function addInvoicePayment(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.ADD_PAYMENT,
     entityType: AuditEntityType.PAYMENT,
@@ -805,6 +856,7 @@ export async function deleteInvoiceAttachment(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.DELETE,
     entityType: AuditEntityType.INVOICE,
@@ -866,6 +918,7 @@ export async function markPphPaid(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.MARK_PPH_PAID,
     entityType: AuditEntityType.INVOICE,
@@ -897,6 +950,7 @@ export async function deleteInvoice(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.DELETE,
     entityType: AuditEntityType.INVOICE,
@@ -938,6 +992,7 @@ export async function bulkApproveInvoices(formData: FormData) {
       data: { approvalStatus: InvoiceApprovalStatus.APPROVED, approvedAt: new Date() },
     });
     await writeAuditLog({
+      tenantId: actor.tenantId,
       actorUserId: actor.id,
       action: AuditAction.UPDATE,
       entityType: AuditEntityType.INVOICE,
@@ -990,6 +1045,7 @@ export async function bulkMarkSentInvoices(formData: FormData) {
     }
 
     await writeAuditLog({
+      tenantId: actor.tenantId,
       actorUserId: actor.id,
       action: AuditAction.UPDATE,
       entityType: AuditEntityType.INVOICE,
@@ -1016,7 +1072,7 @@ export async function getInvoicesPaged(input: {
   const page = input.page ?? 1;
   const skip = Math.max(0, (page - 1) * pageSize);
 
-  const where = q
+  const where: Prisma.InvoiceWhereInput = q
     ? {
         OR: [
           { invoiceNumber: { contains: q } },
@@ -1025,17 +1081,25 @@ export async function getInvoicesPaged(input: {
           { project: { name: { contains: q } } },
         ],
       }
-    : undefined;
+    : {};
 
   const [items, total] = await prisma.$transaction([
     prisma.invoice.findMany({
-      where,
+      where: {
+        ...where,
+        type: { in: ["PROFESSIONAL", "SIMPLE"] as any }
+      },
       include: { client: true, project: true },
       orderBy: { createdAt: "desc" },
       take: pageSize,
       skip,
     }),
-    prisma.invoice.count({ where }),
+    prisma.invoice.count({ 
+      where: {
+        ...where,
+        type: { in: ["PROFESSIONAL", "SIMPLE"] as any }
+      }
+    }),
   ]);
 
   return {
@@ -1082,7 +1146,7 @@ export async function getTaxReminderInvoices() {
   return prisma.invoice.findMany({
     where: {
       isDeductedByClient: false,
-      status: InvoiceStatus.PAID,
+      status: "PAID" as any,
       pphPaidAt: null,
     },
     include: { client: true, project: true },

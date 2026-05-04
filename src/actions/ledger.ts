@@ -16,11 +16,12 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 export async function getLedgerSummary(input: { from?: string; to?: string }) {
-  await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
+  const actor = await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
   const from = input.from ? new Date(input.from) : null;
   const to = input.to ? new Date(input.to) : null;
 
   const where = {
+    tenantId: actor.tenantId,
     ...(from ? { occurredAt: { gte: from } } : {}),
     ...(to ? { occurredAt: { ...(from ? { gte: from } : {}), lte: to } } : {}),
   };
@@ -62,6 +63,7 @@ export async function backfillLedgerFromPayments() {
     for (const p of payments) {
       await tx.ledgerEntry.create({
         data: {
+          tenantId: actor.tenantId,
           type: LedgerEntryType.INCOME,
           occurredAt: p.paidAt,
           amount: p.amount,

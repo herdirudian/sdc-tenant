@@ -13,23 +13,18 @@ export const dynamic = "force-dynamic";
 
 export default async function ReceiptPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ invoiceId: string }>;
-  searchParams: Promise<{ token?: string }>;
 }) {
   const { invoiceId } = await params;
-  const { token } = await searchParams;
   const invoice = await getInvoiceById(invoiceId);
 
   if (!invoice) notFound();
 
-  // Jika tidak ada token portal yang valid, cek login
-  if (!token || token !== invoice.client.portalToken) {
-    const session = await getSession();
-    if (!session || ![UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF].includes(session.user.role)) {
-      redirect("/login");
-    }
+  // Cek login
+  const session = await getSession();
+  if (!session || ![UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF].includes(session.user.role)) {
+    redirect("/login");
   }
 
   // Kwitansi hanya untuk invoice yang sudah PAID

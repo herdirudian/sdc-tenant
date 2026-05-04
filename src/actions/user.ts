@@ -7,6 +7,8 @@ import { AuditAction, AuditEntityType, UserRole } from "@/generated/prisma/clien
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { sendEmail } from "@/lib/email";
+import crypto from "crypto";
 
 const createUserSchema = z.object({
   email: z.string().trim().email(),
@@ -30,6 +32,7 @@ export async function createUser(formData: FormData) {
 
   const created = await prisma.user.create({
     data: {
+      tenantId: actor.tenantId,
       email: parsed.data.email,
       name: parsed.data.name,
       role: parsed.data.role,
@@ -40,6 +43,7 @@ export async function createUser(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.CREATE,
     entityType: AuditEntityType.USER,
@@ -74,6 +78,7 @@ export async function updateUserRole(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.USER,
@@ -113,6 +118,7 @@ export async function setUserActive(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.USER,
@@ -150,6 +156,7 @@ export async function resetUserPassword(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.USER,
@@ -165,8 +172,101 @@ export async function resetUserPassword(formData: FormData) {
 }
 
 export async function listUsers() {
-  await requireRole([UserRole.ADMIN]);
+  const actor = await requireRole([UserRole.ADMIN, UserRole.STAFF]);
   return prisma.user.findMany({
+    where: { tenantId: actor.tenantId },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+const inviteUserSchema = z.object({
+  email: z.string().trim().email(),
+  role: z.nativeEnum(UserRole),
+});
+
+export async function inviteUser(formData: FormData) {
+  const actor = await requireRole([UserRole.ADMIN]);
+  const parsed = inviteUserSchema.safeParse({
+    email: formData.get("email"),
+    role: formData.get("role"),
+  });
+
+  if (!parsed.success) redirect("/users?error=invalid");
+
+  // Check if user already exists
+  const existingUser = await prisma.user.findUnique({
+    where: { email: parsed.data.email },
+  });
+  if (existingUser) redirect("/users?error=already_user");
+
+  // Create or update invitation
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+
+  const invitation = await prisma.userInvitation.upsert({
+    where: {
+      tenantId_email: {
+        tenantId: actor.tenantId,
+        email: parsed.data.email,
+      },
+    },
+    update: {
+      role: parsed.data.role,
+      token,
+      expiresAt,
+    },
+    create: {
+      tenantId: actor.tenantId,
+      email: parsed.data.email,
+      role: parsed.data.role,
+      token,
+      expiresAt,
+    },
+    include: { tenant: true },
+  });
+
+  // Send invitation email
+  const baseUrl = process.env.APP_BASE_URL || "http://localhost:3000";
+  const inviteLink = `${baseUrl}/register/invite/${token}`;
+
+  await sendEmail({
+    to: parsed.data.email,
+    subject: `Undangan Bergabung di ${invitation.tenant.name}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; border-radius: 8px;">
+        <h2 style="color: #2563eb;">Halo!</h2>
+        <p>Anda telah diundang untuk bergabung dengan tim <b>${invitation.tenant.name}</b> di Sistem Invoice SDC dengan peran sebagai <b>${parsed.data.role}</b>.</p>
+        
+        <p>Silakan klik tombol di bawah ini untuk menyelesaikan pendaftaran Anda:</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${inviteLink}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Terima Undangan</a>
+        </div>
+
+        <p style="color: #6b7280; font-size: 14px;">Link ini akan kadaluarsa dalam 7 hari.</p>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+        <p style="color: #9ca3af; font-size: 12px; text-align: center;">Solusi Invoice</p>
+      </div>
+    `,
+  });
+
+  revalidatePath("/users");
+  redirect("/users?invited=1");
+}
+
+export async function revokeInvitation(invitationId: string) {
+  const actor = await requireRole([UserRole.ADMIN]);
+  await prisma.userInvitation.delete({
+    where: { id: invitationId, tenantId: actor.tenantId },
+  });
+  revalidatePath("/users");
+}
+
+export async function listInvitations() {
+  const actor = await requireRole([UserRole.ADMIN]);
+  return prisma.userInvitation.findMany({
+    where: { tenantId: actor.tenantId },
     orderBy: { createdAt: "desc" },
   });
 }

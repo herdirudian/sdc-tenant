@@ -6,27 +6,62 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatIDR } from "@/lib/format";
-import { requireRole } from "@/lib/auth";
+import { getSession, requireRole, requireSubscription } from "@/lib/auth";
 import { UserRole } from "@/generated/prisma/enums";
 import { formatDateID } from "@/lib/format";
+import { getGlobalSettings } from "@/actions/saas-admin";
+import { Megaphone, Info } from "lucide-react";
 import { ArrowUpRight, Receipt, Wallet, Landmark, Bell, TrendingUp, TrendingDown, CircleDollarSign, Briefcase } from "lucide-react";
 import { SimpleBarChart } from "@/components/dashboard-charts";
 import { SyncPaidInvoicesButton } from "@/components/sync-paid-invoices-button";
+import { LandingPage } from "@/components/landing-page";
+import { OnboardingBanner } from "@/components/onboarding-banner";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const user = await requireRole([UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF]);
-  const data = await getDashboardData();
+  const session = await getSession();
+  if (!session) return <LandingPage />;
+
+  const tenantInfo = await requireSubscription();
+  const user = session.user;
+  
+  const [data, settings] = await Promise.all([
+    getDashboardData(),
+    getGlobalSettings(),
+  ]);
   const summary = data.summary;
+  const subscription = tenantInfo.subscription;
+
   const canCreateClient = user.role === UserRole.ADMIN || user.role === UserRole.STAFF;
   const canCreateInvoice = user.role === UserRole.ADMIN || user.role === UserRole.FINANCE;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {settings.announcementTitle && (
+        <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 dark:bg-orange-950/20 dark:border-orange-900/50">
+          <div className="flex items-start gap-3">
+            <Megaphone className="h-5 w-5 text-orange-600 mt-0.5" />
+            <div>
+              <h3 className="font-bold text-orange-900 dark:text-orange-400">{settings.announcementTitle}</h3>
+              <p className="text-sm text-orange-800/80 dark:text-orange-300/70">{settings.announcementText}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <OnboardingBanner onboarding={data.onboarding} />
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+            {subscription && (
+              <Badge variant={subscription.status === "ACTIVE" ? "default" : "outline"} className={subscription.status === "TRIAL" ? "bg-amber-100 text-amber-700 border-amber-200" : ""}>
+                {subscription.status === "TRIAL" ? "Trial" : "Premium"}
+              </Badge>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">
             Overview ringkas untuk operasional finance dan project.
           </p>
@@ -304,8 +339,16 @@ export default async function Home() {
                   ))}
                   {data.recentInvoices.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center text-sm text-muted-foreground">
-                        No invoices yet.
+                      <TableCell colSpan={3} className="text-center py-12">
+                        <div className="flex flex-col items-center gap-2">
+                          <Receipt className="h-8 w-8 text-muted-foreground/50" />
+                          <div className="text-sm font-medium text-muted-foreground">Belum ada invoice.</div>
+                          {canCreateInvoice && (
+                            <Link href="/invoices/new">
+                              <Button variant="link" size="sm" className="h-8">Buat invoice pertama Anda</Button>
+                            </Link>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ) : null}
@@ -345,8 +388,10 @@ export default async function Home() {
                 </Link>
               ))}
               {data.notifications.length === 0 ? (
-                <div className="rounded-xl border border-border p-3 text-sm text-muted-foreground">
-                  No notifications.
+                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border p-8 text-center">
+                  <Bell className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                  <div className="text-sm font-medium text-muted-foreground">Tidak ada notifikasi</div>
+                  <p className="text-[10px] text-muted-foreground/70">Semua pekerjaan Anda sudah up-to-date.</p>
                 </div>
               ) : null}
             </CardContent>
@@ -382,8 +427,10 @@ export default async function Home() {
                 </div>
               ))}
               {data.recentActivity.length === 0 ? (
-                <div className="rounded-xl border border-border p-3 text-sm text-muted-foreground">
-                  No logs yet.
+                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border p-8 text-center">
+                  <Info className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                  <div className="text-sm font-medium text-muted-foreground">Belum ada aktivitas</div>
+                  <p className="text-[10px] text-muted-foreground/70">Aktivitas sistem Anda akan muncul di sini.</p>
                 </div>
               ) : null}
             </CardContent>

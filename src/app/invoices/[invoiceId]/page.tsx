@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateID, formatIDR, formatWhatsAppPhone } from "@/lib/format";
 import { requireRole } from "@/lib/auth";
-import { InvoiceApprovalStatus, InvoiceStatus, InvoiceTemplate, PaymentMethod, UserRole } from "@/generated/prisma/client";
+import { InvoiceApprovalStatus, InvoiceStatus, InvoiceTemplate, PaymentMethod, UserRole, TaxMethod } from "@/generated/prisma/client";
 import { AddPaymentForm } from "./add-payment-form";
 import { MessageCircle } from "lucide-react";
 import { ArrowUpRight, Receipt, Wallet, Landmark, Bell, TrendingUp, TrendingDown, CircleDollarSign, Briefcase, FileText } from "lucide-react";
@@ -75,16 +75,27 @@ export default async function InvoiceDetailPage({
       <Badge variant="success">SENT</Badge>
     );
 
-  const bruto = invoice.amountBruto.toString();
-  const tax = invoice.taxPphFinal.toString();
-  const net = (Number(bruto) - Number(tax)).toString();
+  const amountBruto = Number(invoice.amountBruto.toString());
+  const ppnAmount = Number(invoice.taxPpnAmount.toString());
+  const pphAmount = Number(invoice.taxPphAmount.toString());
+  const otherAmount = Number(invoice.taxOtherAmount.toString());
+  const isInclusive = invoice.taxMethod === TaxMethod.INCLUSIVE;
+
+  let dpp = amountBruto + pphAmount - ppnAmount - otherAmount;
+  if (isInclusive) {
+    // If inclusive, dpp was calculated as: dpp = items_total / (1 + PPN_rate/100)
+    // and amountBruto was dpp + taxPpnAmount + taxOtherAmount - taxPphAmount
+    // This is getting complicated to reverse engineer accurately without items.
+    // Let's use the stored amounts.
+    dpp = amountBruto + pphAmount - ppnAmount - otherAmount;
+  }
+
   const totalPaid = invoice.payments.reduce(
     (acc, p) => acc + Number(p.amount.toString()),
     0,
   );
-  const remaining = Math.max(0, Number(bruto) - totalPaid);
+  const remaining = Math.max(0, amountBruto - totalPaid);
 
-  const portalUrl = `${process.env.APP_BASE_URL ?? "http://localhost:3000"}/portal/${invoice.client.portalToken}`;
   const waPhone = formatWhatsAppPhone(invoice.client.phone);
   
   const waInvoiceMessage = encodeURIComponent(
@@ -92,7 +103,6 @@ export default async function InvoiceDetailPage({
     `Berikut kami kirimkan invoice *${invoice.invoiceNumber}* untuk project *${invoice.project?.name ?? "Services"}*.\n\n` +
     `Total: *${formatIDR(invoice.amountBruto.toString())}*\n` +
     `Jatuh Tempo: *${formatDateID(invoice.dueDate)}*\n\n` +
-    `Anda dapat melihat detail dan mendownload invoice melalui link berikut:\n${portalUrl}\n\n` +
     `Terima kasih.`
   );
 
@@ -100,7 +110,6 @@ export default async function InvoiceDetailPage({
     `Halo *${invoice.client.name}*,\n\n` +
     `Terima kasih atas pembayarannya untuk invoice *${invoice.invoiceNumber}*.\n\n` +
     `Pembayaran sebesar *${formatIDR(invoice.amountBruto.toString())}* telah kami terima dengan status *LUNAS*.\n\n` +
-    `Kwitansi resmi dapat Anda lihat melalui link berikut:\n${portalUrl}\n\n` +
     `Terima kasih.`
   );
 
@@ -248,28 +257,31 @@ export default async function InvoiceDetailPage({
               </table>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="rounded-lg border border-border p-4">
-                <div className="text-xs text-muted-foreground">Amount (Bruto)</div>
-                <div className="mt-1 text-lg font-semibold">{formatIDR(bruto)}</div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-lg border border-border p-4 bg-muted/20">
+                <div className="text-xs text-muted-foreground uppercase font-bold">Subtotal (DPP)</div>
+                <div className="mt-1 text-lg font-semibold">{formatIDR(dpp)}</div>
               </div>
-              <div className="rounded-lg border border-border p-4">
-                <div className="text-xs text-muted-foreground">PPh Final 0.5%</div>
-                <div className="mt-1 text-lg font-semibold">{formatIDR(tax)}</div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {invoice.isDeductedByClient
-                    ? "Deducted by client (net payment)."
-                    : "Not deducted by client (you pay manually)."}
-                </div>
+              <div className="rounded-lg border border-border p-4 bg-blue-50/30">
+                <div className="text-xs text-blue-700 uppercase font-bold">PPN ({invoice.taxPpnRate.toString()}%)</div>
+                <div className="mt-1 text-lg font-semibold text-blue-900">{formatIDR(ppnAmount)}</div>
+              </div>
+              <div className="rounded-lg border border-border p-4 bg-rose-50/30">
+                <div className="text-xs text-rose-700 uppercase font-bold">{invoice.taxPphType || 'Potongan PPh'} ({invoice.taxPphRate.toString()}%)</div>
+                <div className="mt-1 text-lg font-semibold text-rose-900">({formatIDR(pphAmount)})</div>
+              </div>
+              <div className="rounded-lg border border-border p-4 bg-primary/10">
+                <div className="text-xs text-primary uppercase font-bold font-mono">Total Bayar</div>
+                <div className="mt-1 text-lg font-bold text-primary">{formatIDR(amountBruto)}</div>
               </div>
             </div>
 
-            {invoice.isDeductedByClient ? (
-              <div className="rounded-lg border border-border p-4">
-                <div className="text-xs text-muted-foreground">Client Pays (Net)</div>
-                <div className="mt-1 text-lg font-semibold">{formatIDR(net)}</div>
+            {otherAmount > 0 && (
+              <div className="rounded-lg border border-border p-4 bg-amber-50/30">
+                <div className="text-xs text-amber-700 uppercase font-bold">{invoice.taxOtherLabel || 'Pajak Lainnya'} ({invoice.taxOtherRate.toString()}%)</div>
+                <div className="mt-1 text-lg font-semibold text-amber-900">{formatIDR(otherAmount)}</div>
               </div>
-            ) : null}
+            )}
 
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="rounded-lg border border-border p-4">

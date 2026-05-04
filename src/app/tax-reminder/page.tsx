@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateID, formatIDR } from "@/lib/format";
-import { requireRole } from "@/lib/auth";
+import { requireRole, requireSubscription } from "@/lib/auth";
 import { UserRole } from "@/generated/prisma/enums";
 
 import { AlertCircle } from "lucide-react";
@@ -18,6 +18,7 @@ export default async function TaxReminderPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
+  await requireSubscription();
   await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
   const { error } = await searchParams;
   const invoices = await getTaxReminderInvoices();

@@ -14,7 +14,6 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { extractExpenseFromImage } from "@/lib/ai";
 import { writeFile } from "fs/promises";
 import { join } from "path";
 import { v4 as uuidv4 } from "uuid";
@@ -41,13 +40,13 @@ export async function getExpensesPaged(input: {
   from?: string;
   to?: string;
 }) {
-  await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
+  const actor = await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
 
   const page = Math.max(1, input.page ?? 1);
   const limit = Math.max(1, input.limit ?? 50);
   const skip = (page - 1) * limit;
 
-  const where: Prisma.ExpenseWhereInput = {};
+  const where: Prisma.ExpenseWhereInput = { tenantId: actor.tenantId };
   if (input.category) {
     where.category = input.category;
   }
@@ -98,6 +97,7 @@ export async function createExpenseAction(formData: FormData) {
   const created = await prisma.$transaction(async (tx) => {
     const exp = await tx.expense.create({
       data: {
+        tenantId: actor.tenantId,
         occurredAt,
         amount,
         category: parsed.data.category,
@@ -112,6 +112,7 @@ export async function createExpenseAction(formData: FormData) {
 
     await tx.ledgerEntry.create({
       data: {
+        tenantId: actor.tenantId,
         type: LedgerEntryType.EXPENSE,
         occurredAt,
         amount,
@@ -176,6 +177,7 @@ export async function createExpenseAction(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.CREATE,
     entityType: AuditEntityType.EXPENSE,
@@ -243,6 +245,7 @@ export async function updateExpenseAction(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.EXPENSE,
@@ -273,6 +276,7 @@ export async function deleteExpenseAction(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.DELETE,
     entityType: AuditEntityType.EXPENSE,
@@ -289,9 +293,10 @@ export async function deleteExpenseAction(formData: FormData) {
 }
 
 export async function getExpenseCategories() {
-  await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
+  const actor = await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
   const categories = await prisma.expense.groupBy({
     by: ["category"],
+    where: { tenantId: actor.tenantId },
     _count: { category: true },
   });
   return categories.map((c) => c.category);
@@ -302,38 +307,4 @@ export async function getExpenseById(id: string) {
   return prisma.expense.findUnique({
     where: { id },
   });
-}
-
-export async function scanReceiptAction(formData: FormData) {
-  try {
-    await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
-    const file = formData.get("file") as File;
-    if (!file) throw new Error("No file uploaded");
-
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // 1. Save file locally
-    const filename = `${uuidv4()}-${file.name.replaceAll(" ", "_")}`;
-    const uploadPath = join(process.cwd(), "public", "uploads", "expenses", filename);
-    await writeFile(uploadPath, buffer);
-    const attachmentUrl = `/uploads/expenses/${filename}`;
-
-    // 2. Perform OCR
-    const extractedData = await extractExpenseFromImage(buffer, file.type);
-
-    return {
-      success: true,
-      data: {
-        ...extractedData,
-        attachmentUrl,
-      },
-    };
-  } catch (error: any) {
-    console.error("Scan receipt action failed:", error);
-    return {
-      success: false,
-      error: error.message || "Gagal memproses struk",
-    };
-  }
 }

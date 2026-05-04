@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requireSubscription } from "@/lib/auth";
 import { formatDateID, formatIDR } from "@/lib/format";
 import { LedgerEntryType, PaymentMethod, UserRole } from "@/generated/prisma/client";
 
@@ -20,6 +20,7 @@ export default async function LedgerPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; error?: string; created?: string; deleted?: string; backfilled?: string }>;
 }) {
+  await requireSubscription();
   const user = await requireUser();
   const canFinance = user.role === UserRole.ADMIN || user.role === UserRole.FINANCE;
   if (!canFinance) return null;

@@ -5,11 +5,21 @@ import { formatIDR, formatDateID } from "./format";
 
 interface InvoiceData {
   invoiceNumber: string;
+  taxInvoiceNumber?: string | null;
   createdAt: Date;
   dueDate: Date | null;
   type: string;
   poReference?: string | null;
+  taxMethod: string;
   amountBruto: number;
+  taxPpnRate: number;
+  taxPpnAmount: number;
+  taxPphRate: number;
+  taxPphAmount: number;
+  taxPphType?: string | null;
+  taxOtherRate: number;
+  taxOtherAmount: number;
+  taxOtherLabel?: string | null;
   taxPphFinal: number;
   isDeductedByClient: boolean;
   client: {
@@ -88,20 +98,15 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", (err) => reject(err));
 
-    // Letterhead
-    if (settings.letterheadUrl) {
-      try {
-        const letterheadPath = path.join(process.cwd(), "public", settings.letterheadUrl.replace(/^\/+/g, ""));
-        console.log(`[PDF] Attempting to load letterhead from: ${letterheadPath}`);
-        if (fs.existsSync(letterheadPath)) {
-          doc.image(letterheadPath, 0, 0, { width: 595.28 }); // A4 width
-          console.log(`[PDF] Letterhead loaded successfully`);
-        } else {
-          console.warn(`[PDF] Letterhead file not found at: ${letterheadPath}`);
-        }
-      } catch (err) {
-        console.error("[PDF] Failed to load letterhead:", err);
+    // Letterhead (Default)
+    const letterheadUrl = "/img/KopSurat.png";
+    try {
+      const letterheadPath = path.join(process.cwd(), "public", letterheadUrl.replace(/^\/+/g, ""));
+      if (fs.existsSync(letterheadPath)) {
+        doc.image(letterheadPath, 0, 0, { width: 595.28 }); // A4 width
       }
+    } catch (err) {
+      console.error(`[PDF] Failed to load default letterhead:`, err);
     }
 
 
@@ -110,6 +115,9 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
     doc.fillColor("#000000");
     doc.fontSize(20).font(getFont(true)).text("INVOICE", 40, 160, { align: "right" });
     doc.fontSize(10).font(getFont()).text(invoice.invoiceNumber, { align: "right" });
+    if (invoice.taxInvoiceNumber) {
+      doc.fontSize(8).font(getFont(true)).fillColor(brandColor).text(`Faktur Pajak: ${invoice.taxInvoiceNumber}`, { align: "right" });
+    }
     if (invoice.poReference) {
       doc.fontSize(8).font(getFont()).fillColor("#666666").text(`PO: ${invoice.poReference}`, { align: "right" });
     }
@@ -195,32 +203,50 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
 
     // Totals
     const bruto = invoice.amountBruto;
-    const tax = invoice.taxPphFinal;
-    const net = bruto - tax;
+    const ppnRate = invoice.taxPpnRate;
+    const ppnAmount = invoice.taxPpnAmount;
+    const pphRate = invoice.taxPphRate;
+    const pphAmount = invoice.taxPphAmount;
+    const otherRate = invoice.taxOtherRate;
+    const otherAmount = invoice.taxOtherAmount;
+    const isInclusive = invoice.taxMethod === "INCLUSIVE";
+
+    let dpp = bruto;
+    if (isInclusive) {
+      dpp = bruto / (1 + ppnRate / 100);
+    }
+
+    const totalPayable = dpp + ppnAmount + otherAmount - pphAmount;
 
     doc.fontSize(9).font(getFont()).fillColor("#444444");
     doc.text("Subtotal", 350, currentY, { width: 120, align: "right" });
-    doc.fillColor("#000000").text(formatIDR(bruto), 485, currentY, { width: 70, align: "right" });
-    currentY += 20;
+    doc.fillColor("#000000").text(formatIDR(dpp), 485, currentY, { width: 70, align: "right" });
+    currentY += 18;
 
-    if (invoice.isDeductedByClient) {
-      doc.fillColor("#444444").text("PPH Final (0.5%)", 350, currentY, { width: 120, align: "right" });
-      doc.fillColor("#ef4444").text(`(${formatIDR(tax)})`, 485, currentY, { width: 70, align: "right" });
-      currentY += 25;
-      
-      doc.strokeColor(brandColor).lineWidth(1).moveTo(350, currentY - 5).lineTo(555, currentY - 5).stroke();
-
-      doc.fontSize(11).font(getFont(true)).fillColor(brandColor);
-      doc.text("Total Transfer", 350, currentY, { width: 120, align: "right" });
-      doc.text(formatIDR(net), 485, currentY, { width: 70, align: "right" });
-    } else {
-      currentY += 5;
-      doc.strokeColor(brandColor).lineWidth(1).moveTo(350, currentY - 5).lineTo(555, currentY - 5).stroke();
-      
-      doc.fontSize(11).font(getFont(true)).fillColor(brandColor);
-      doc.text("Total Amount", 350, currentY, { width: 120, align: "right" });
-      doc.text(formatIDR(bruto), 485, currentY, { width: 70, align: "right" });
+    if (ppnRate > 0) {
+      doc.fillColor("#444444").text(`PPN (${ppnRate}%)`, 350, currentY, { width: 120, align: "right" });
+      doc.fillColor("#000000").text(formatIDR(ppnAmount), 485, currentY, { width: 70, align: "right" });
+      currentY += 18;
     }
+
+    if (otherRate > 0) {
+      doc.fillColor("#444444").text(`${invoice.taxOtherLabel || 'Lainnya'} (${otherRate}%)`, 350, currentY, { width: 120, align: "right" });
+      doc.fillColor("#000000").text(formatIDR(otherAmount), 485, currentY, { width: 70, align: "right" });
+      currentY += 18;
+    }
+
+    if (pphRate > 0) {
+      doc.fillColor("#444444").text(`${invoice.taxPphType || 'Potongan PPh'} (${pphRate}%)`, 350, currentY, { width: 120, align: "right" });
+      doc.fillColor("#ef4444").text(`(${formatIDR(pphAmount)})`, 485, currentY, { width: 70, align: "right" });
+      currentY += 18;
+    }
+
+    currentY += 7;
+    doc.strokeColor(brandColor).lineWidth(1).moveTo(350, currentY - 5).lineTo(555, currentY - 5).stroke();
+
+    doc.fontSize(11).font(getFont(true)).fillColor(brandColor);
+    doc.text("Total Bayar", 350, currentY, { width: 120, align: "right" });
+    doc.text(formatIDR(totalPayable), 485, currentY, { width: 70, align: "right" });
 
     currentY += 60;
     

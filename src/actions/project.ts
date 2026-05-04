@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getRequestMeta, requireRole } from "@/lib/auth";
+import { getRequestMeta, requireRole, requireUser } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
 import {
   AuditAction,
@@ -46,6 +46,7 @@ export async function createProject(formData: FormData) {
 
   const created = await prisma.project.create({
     data: {
+      tenantId: actor.tenantId,
       clientId: parsed.data.clientId,
       name: parsed.data.name,
       description: emptyToNull(parsed.data.description),
@@ -56,6 +57,7 @@ export async function createProject(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.CREATE,
     entityType: AuditEntityType.PROJECT,
@@ -98,6 +100,7 @@ export async function updateProject(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.PROJECT,
@@ -122,6 +125,7 @@ export async function deleteProject(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.DELETE,
     entityType: AuditEntityType.PROJECT,
@@ -136,7 +140,9 @@ export async function deleteProject(formData: FormData) {
 }
 
 export async function getProjects() {
+  const user = await requireUser();
   return prisma.project.findMany({
+    where: { tenantId: user.tenantId },
     include: {
       client: true,
       _count: { select: { invoices: true } },

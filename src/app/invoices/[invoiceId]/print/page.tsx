@@ -9,28 +9,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateID, formatIDR } from "@/lib/format";
 import { getSession } from "@/lib/auth";
-import { InvoiceTemplate, UserRole } from "@/generated/prisma/client";
+import { InvoiceTemplate, InvoiceType, UserRole, TaxMethod } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
 
 export default async function InvoicePrintPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ invoiceId: string }>;
-  searchParams: Promise<{ token?: string }>;
 }) {
   const { invoiceId } = await params;
-  const { token } = await searchParams;
   const invoice = await getInvoiceById(invoiceId);
   if (!invoice) notFound();
 
-  // Jika tidak ada token portal yang valid, cek login
-  if (!token || token !== invoice.client.portalToken) {
-    const session = await getSession();
-    if (!session || ![UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF].includes(session.user.role)) {
-      redirect("/login");
-    }
+  // Cek login
+  const session = await getSession();
+  if (!session || ![UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF].includes(session.user.role)) {
+    redirect("/login");
   }
 
   const settings = await getCompanySettings();
@@ -42,9 +37,23 @@ export default async function InvoicePrintPage({
   const termsText = invoice.terms ?? settings.invoiceTerms ?? null;
   const footerText = invoice.footer ?? settings.invoiceFooter ?? null;
 
-  const bruto = Number(invoice.amountBruto.toString());
-  const tax = Number(invoice.taxPphFinal.toString());
-  const net = bruto - tax;
+  const amountBruto = Number(invoice.amountBruto.toString());
+  const isInclusive = invoice.taxMethod === TaxMethod.INCLUSIVE;
+
+  const ppnRate = Number(invoice.taxPpnRate.toString());
+  const pphRate = Number(invoice.taxPphRate.toString());
+  const otherRate = Number(invoice.taxOtherRate.toString());
+
+  let dpp = amountBruto;
+  if (isInclusive) {
+    dpp = amountBruto / (1 + ppnRate / 100);
+  }
+
+  const ppnAmount = dpp * (ppnRate / 100);
+  const pphAmount = dpp * (pphRate / 100);
+  const otherAmount = dpp * (otherRate / 100);
+
+  const totalTagihan = dpp + ppnAmount + otherAmount - pphAmount;
 
   const isModern = invoice.template === InvoiceTemplate.MODERN;
   const primaryColor = isModern ? "text-blue-700" : "text-black";
@@ -151,7 +160,7 @@ export default async function InvoicePrintPage({
       {/* Fixed Background for Print */}
       <div className="bg-kop fixed top-0 left-0 w-[210mm] h-[297mm] pointer-events-none hidden print:block" style={{ zIndex: -1 }}>
         <img
-          src={settings.letterheadUrl ?? "/img/KopSurat.png"}
+          src="/img/KopSurat.png"
           alt=""
           className="w-full h-full object-fill"
         />
@@ -168,7 +177,7 @@ export default async function InvoicePrintPage({
         {/* Screen-only Background Layer */}
         <div className="absolute inset-0 pointer-events-none print:hidden">
           <img
-            src={settings.letterheadUrl ?? "/img/KopSurat.png"}
+            src="/img/KopSurat.png"
             alt=""
             className="w-full h-full object-fill"
           />
@@ -187,6 +196,9 @@ export default async function InvoicePrintPage({
                     <div>
                       <h1 className={`text-2xl font-bold uppercase tracking-tighter leading-none mb-1 ${primaryColor}`}>Invoice</h1>
                       <div className="font-mono text-[11px]">{invoice.invoiceNumber}</div>
+                      {invoice.taxInvoiceNumber && (
+                        <div className="text-[10px] text-blue-700 font-semibold">Faktur Pajak: {invoice.taxInvoiceNumber}</div>
+                      )}
                       {invoice.poReference && (
                         <div className="text-[10px] text-muted-foreground">PO: {invoice.poReference}</div>
                       )}
@@ -263,27 +275,57 @@ export default async function InvoicePrintPage({
                           </TableRow>
                         )}
                         
-                        {invoice.isDeductedByClient ? (
-                          <>
-                            <TableRow className="hover:bg-transparent border-0">
-                              <TableCell colSpan={3} className="p-1 pt-4 text-right text-[11px] text-muted-foreground">Subtotal</TableCell>
-                              <TableCell className="text-right p-1 pt-4 text-[11px]">{formatIDR(bruto)}</TableCell>
+                        {(() => {
+                          const rows = [];
+                          
+                          // Subtotal Row
+                          rows.push(
+                            <TableRow key="subtotal" className="border-t-2 border-black/5">
+                              <TableCell colSpan={3} className="p-1 py-1.5 text-right font-medium text-[12px]">Subtotal</TableCell>
+                              <TableCell className="text-right p-1 py-1.5 font-bold text-[12px]">{formatIDR(dpp)}</TableCell>
                             </TableRow>
-                            <TableRow className="hover:bg-transparent border-0">
-                              <TableCell colSpan={3} className="p-1 text-right text-[11px] text-muted-foreground">PPh Final (0.5%)</TableCell>
-                              <TableCell className="text-right p-1 text-[11px]">- {formatIDR(tax)}</TableCell>
+                          );
+
+                          // PPN Row
+                          if (ppnRate > 0) {
+                            rows.push(
+                              <TableRow key="ppn" className="border-none">
+                                <TableCell colSpan={3} className="p-1 py-0.5 text-right text-muted-foreground">PPN ({ppnRate}%)</TableCell>
+                                <TableCell className="text-right p-1 py-0.5 font-medium">{formatIDR(ppnAmount)}</TableCell>
+                              </TableRow>
+                            );
+                          }
+
+                          // Other Tax Row
+                          if (otherRate > 0) {
+                            rows.push(
+                              <TableRow key="other" className="border-none">
+                                <TableCell colSpan={3} className="p-1 py-0.5 text-right text-muted-foreground">{invoice.taxOtherLabel || 'Lainnya'} ({otherRate}%)</TableCell>
+                                <TableCell className="text-right p-1 py-0.5 font-medium">{formatIDR(otherAmount)}</TableCell>
+                              </TableRow>
+                            );
+                          }
+
+                          // PPh Deduction Row
+                          if (pphRate > 0) {
+                            rows.push(
+                              <TableRow key="pph" className="border-none">
+                                <TableCell colSpan={3} className="p-1 py-0.5 text-right text-muted-foreground">{invoice.taxPphType || 'Potongan PPh'} ({pphRate}%)</TableCell>
+                                <TableCell className="text-right p-1 py-0.5 font-medium">({formatIDR(pphAmount)})</TableCell>
+                              </TableRow>
+                            );
+                          }
+
+                          // Total Row
+                          rows.push(
+                            <TableRow key="total" className="border-none">
+                              <TableCell colSpan={3} className="p-1 py-4 text-right font-bold text-base">Total Bayar</TableCell>
+                              <TableCell className={`text-right p-1 py-4 font-bold text-base ${isModern ? "text-blue-800" : ""}`}>{formatIDR(totalTagihan)}</TableCell>
                             </TableRow>
-                            <TableRow className={`hover:bg-transparent border-0 border-t-2 ${borderColor}`}>
-                              <TableCell colSpan={3} className="p-1 py-3 text-right font-bold text-base">Net Payable</TableCell>
-                              <TableCell className={`text-right p-1 py-3 font-bold text-base ${isModern ? "text-blue-800" : ""}`}>{formatIDR(net)}</TableCell>
-                            </TableRow>
-                          </>
-                        ) : (
-                          <TableRow className={`hover:bg-transparent border-0 border-t-2 ${borderColor}`}>
-                            <TableCell colSpan={3} className="p-1 py-4 text-right font-bold text-base">Total Payable</TableCell>
-                            <TableCell className={`text-right p-1 py-4 font-bold text-base ${isModern ? "text-blue-800" : ""}`}>{formatIDR(bruto)}</TableCell>
-                          </TableRow>
-                        )}
+                          );
+
+                          return rows;
+                        })()}
                       </TableBody>
                     </Table>
                   </div>

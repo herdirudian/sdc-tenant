@@ -1,13 +1,14 @@
 import Link from "next/link";
 
-import { getInvoicesPaged, setInvoiceStatus } from "@/actions/invoice";
+import { deleteInvoice, getInvoicesPaged, setInvoiceStatus } from "@/actions/invoice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateID, formatIDR } from "@/lib/format";
-import { requireRole } from "@/lib/auth";
+import { getSession, requireRole, requireSubscription } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { InvoiceApprovalStatus, InvoiceStatus, UserRole } from "@/generated/prisma/enums";
 import { InvoiceListClient } from "@/components/invoice-list-client";
 import { AlertCircle } from "lucide-react";
@@ -17,9 +18,16 @@ export const dynamic = "force-dynamic";
 export default async function InvoicesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; error?: string }>;
 }) {
-  const user = await requireRole([UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF]);
+  const session = await getSession();
+  if (!session) redirect("/login");
+  
+  await requireSubscription();
+  
+  const user = session.user;
+
+  await requireRole([UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF]);
   const { q, page } = await searchParams;
   const pageNumber = page ? Number(page) : 1;
   const result = await getInvoicesPaged({ q, page: Number.isFinite(pageNumber) ? pageNumber : 1 });
@@ -31,6 +39,12 @@ export default async function InvoicesPage({
   const sanitizedInvoices = invoices.map((inv) => ({
     ...inv,
     amountBruto: inv.amountBruto.toString(),
+    taxPpnRate: inv.taxPpnRate.toString(),
+    taxPpnAmount: inv.taxPpnAmount.toString(),
+    taxPphRate: inv.taxPphRate.toString(),
+    taxPphAmount: inv.taxPphAmount.toString(),
+    taxOtherRate: inv.taxOtherRate.toString(),
+    taxOtherAmount: inv.taxOtherAmount.toString(),
     taxPphFinal: inv.taxPphFinal.toString(),
     dueDate: inv.dueDate ? inv.dueDate.toISOString() : null,
     createdAt: inv.createdAt.toISOString(),
@@ -42,6 +56,8 @@ export default async function InvoicesPage({
     pphPaidAt: inv.pphPaidAt ? inv.pphPaidAt.toISOString() : null,
     client: inv.client ? {
       ...inv.client,
+      defaultPpnRate: (inv.client.defaultPpnRate ?? "0").toString(),
+      defaultPphRate: (inv.client.defaultPphRate ?? "0").toString(),
       createdAt: inv.client.createdAt.toISOString(),
       updatedAt: inv.client.updatedAt.toISOString(),
     } : null,

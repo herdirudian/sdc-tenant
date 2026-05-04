@@ -1,7 +1,7 @@
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { PrismaClient } from "@/generated/prisma/client";
 
-const globalForPrisma = globalThis as unknown as { prisma_v3?: PrismaClient };
+const globalForPrisma = globalThis as unknown as { prisma_v6?: PrismaClient };
 
 function createAdapter() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -12,7 +12,9 @@ function createAdapter() {
       user: "root",
       password: "",
       database: "inv_sdc",
-      connectionLimit: 5,
+      connectionLimit: 10,
+      connectTimeout: 10000,
+      idleTimeout: 30000,
     });
   }
 
@@ -26,11 +28,13 @@ function createAdapter() {
     password: decodeURIComponent(url.password),
     database,
     connectionLimit: 10,
+    connectTimeout: 10000,
+    idleTimeout: 30000,
   });
 }
 
 export const prisma =
-  globalForPrisma.prisma_v3 ??
+  globalForPrisma.prisma_v6 ??
   (() => {
     const client = new PrismaClient({
       adapter: createAdapter(),
@@ -48,4 +52,4 @@ export const prisma =
     return client;
   })();
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma_v3 = prisma;
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma_v6 = prisma;

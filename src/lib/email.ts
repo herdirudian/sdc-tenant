@@ -21,18 +21,21 @@ function env(name: string) {
   return v;
 }
 
-async function getSmtpConfig() {
-  const settings = await prisma.companySettings.findUnique({
-    where: { id: "default" },
-    select: {
-      smtpHost: true,
-      smtpPort: true,
-      smtpSecure: true,
-      smtpUser: true,
-      smtpPassEnc: true,
-      smtpFrom: true,
-    },
-  });
+async function getSmtpConfig(tenantId?: string) {
+  let settings = null;
+  if (tenantId) {
+    settings = await prisma.companySettings.findFirst({
+      where: { tenantId },
+      select: {
+        smtpHost: true,
+        smtpPort: true,
+        smtpSecure: true,
+        smtpUser: true,
+        smtpPassEnc: true,
+        smtpFrom: true,
+      },
+    });
+  }
 
   const hasDb = Boolean(settings?.smtpHost && settings?.smtpPort && settings?.smtpUser && settings?.smtpFrom);
   if (hasDb) {
@@ -71,8 +74,8 @@ async function getSmtpConfig() {
   };
 }
 
-export async function sendEmail(input: SendEmailInput) {
-  const { host, port, secure, user, pass, from } = await getSmtpConfig();
+export async function sendEmail(input: SendEmailInput & { tenantId?: string }) {
+  const { host, port, secure, user, pass, from } = await getSmtpConfig(input.tenantId);
 
   const transporter = nodemailer.createTransport({
     host,

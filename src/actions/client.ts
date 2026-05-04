@@ -1,9 +1,9 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getRequestMeta, requireRole } from "@/lib/auth";
+import { getRequestMeta, requireRole, requireUser } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
-import { AuditAction, AuditEntityType, UserRole } from "@/generated/prisma/client";
+import { AuditAction, AuditEntityType, UserRole, TaxMethod, Prisma } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -16,6 +16,10 @@ const clientSchema = z.object({
   companyName: z.string().trim().optional().or(z.literal("")),
   npwp: z.string().trim().optional().or(z.literal("")),
   address: z.string().trim().optional().or(z.literal("")),
+  defaultTaxMethod: z.nativeEnum(TaxMethod).default(TaxMethod.EXCLUSIVE),
+  defaultPpnRate: z.string().transform((v) => new Prisma.Decimal(v || "0")),
+  defaultPphRate: z.string().transform((v) => new Prisma.Decimal(v || "0")),
+  defaultPphType: z.string().trim().optional().or(z.literal("")),
 });
 
 function emptyToNull(value: string | undefined) {
@@ -32,6 +36,10 @@ export async function createClient(formData: FormData) {
     companyName: formData.get("companyName"),
     npwp: formData.get("npwp"),
     address: formData.get("address"),
+    defaultTaxMethod: formData.get("defaultTaxMethod"),
+    defaultPpnRate: formData.get("defaultPpnRate"),
+    defaultPphRate: formData.get("defaultPphRate"),
+    defaultPphType: formData.get("defaultPphType"),
   });
 
   if (!parsed.success) {
@@ -42,22 +50,28 @@ export async function createClient(formData: FormData) {
 
   const created = await prisma.client.create({
     data: {
+      tenantId: actor.tenantId,
       name: data.name,
       email: emptyToNull(data.email === "" ? undefined : data.email),
       phone: emptyToNull(data.phone === "" ? undefined : data.phone),
       companyName: emptyToNull(data.companyName === "" ? undefined : data.companyName),
       npwp: emptyToNull(data.npwp === "" ? undefined : data.npwp),
       address: emptyToNull(data.address === "" ? undefined : data.address),
+      defaultTaxMethod: data.defaultTaxMethod,
+      defaultPpnRate: data.defaultPpnRate,
+      defaultPphRate: data.defaultPphRate,
+      defaultPphType: emptyToNull(data.defaultPphType === "" ? undefined : data.defaultPphType),
     },
   });
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.CREATE,
     entityType: AuditEntityType.CLIENT,
     entityId: created.id,
-    afterJson: created,
+    afterJson: created as any,
     ip: meta.ip,
     userAgent: meta.userAgent,
   });
@@ -65,44 +79,6 @@ export async function createClient(formData: FormData) {
   revalidatePath("/clients");
   revalidatePath(`/clients/${created.id}/edit`);
   redirect("/clients");
-}
-
-export async function generatePortalToken(clientId: string) {
-  console.log("Generating portal token for client:", clientId);
-  try {
-    await requireRole([UserRole.ADMIN, UserRole.STAFF]);
-
-    const token = crypto.randomBytes(32).toString("hex");
-    console.log("Generated token:", token);
-
-    const updated = await prisma.client.update({
-      where: { id: clientId },
-      data: { portalToken: token },
-    });
-    console.log("Database updated for client:", updated.id);
-
-    revalidatePath(`/clients/${clientId}/edit`);
-    return { ok: true, token };
-  } catch (err) {
-    console.error("Failed to generate portal token:", err);
-    return { ok: false, error: err instanceof Error ? err.message : "Unknown error" };
-  }
-}
-
-export async function getClientByPortalToken(token: string) {
-  const client = await prisma.client.findUnique({
-    where: { portalToken: token },
-    include: {
-      invoices: {
-        orderBy: { createdAt: "desc" },
-        include: {
-          project: true,
-        },
-      },
-    },
-  });
-
-  return client;
 }
 
 export async function updateClient(formData: FormData) {
@@ -118,6 +94,10 @@ export async function updateClient(formData: FormData) {
     companyName: formData.get("companyName"),
     npwp: formData.get("npwp"),
     address: formData.get("address"),
+    defaultTaxMethod: formData.get("defaultTaxMethod"),
+    defaultPpnRate: formData.get("defaultPpnRate"),
+    defaultPphRate: formData.get("defaultPphRate"),
+    defaultPphType: formData.get("defaultPphType"),
   });
 
   if (!parsed.success) {
@@ -135,11 +115,16 @@ export async function updateClient(formData: FormData) {
       companyName: emptyToNull(data.companyName === "" ? undefined : data.companyName),
       npwp: emptyToNull(data.npwp === "" ? undefined : data.npwp),
       address: emptyToNull(data.address === "" ? undefined : data.address),
+      defaultTaxMethod: data.defaultTaxMethod,
+      defaultPpnRate: data.defaultPpnRate,
+      defaultPphRate: data.defaultPphRate,
+      defaultPphType: emptyToNull(data.defaultPphType === "" ? undefined : data.defaultPphType),
     },
   });
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.CLIENT,
@@ -164,6 +149,7 @@ export async function deleteClient(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.DELETE,
     entityType: AuditEntityType.CLIENT,
@@ -178,7 +164,9 @@ export async function deleteClient(formData: FormData) {
 }
 
 export async function getClients() {
+  const user = await requireUser();
   return prisma.client.findMany({
+    where: { tenantId: user.tenantId },
     orderBy: { createdAt: "desc" },
   });
 }
@@ -188,22 +176,23 @@ export async function getClientsPaged(input: {
   page?: number;
   pageSize?: number;
 }) {
+  const user = await requireUser();
+  const tenantId = user.tenantId;
   const q = input.q?.trim();
   const pageSize = input.pageSize ?? 20;
   const page = input.page ?? 1;
   const skip = Math.max(0, (page - 1) * pageSize);
 
-  const where = q
-    ? {
-        OR: [
-          { name: { contains: q } },
-          { email: { contains: q } },
-          { phone: { contains: q } },
-          { companyName: { contains: q } },
-          { npwp: { contains: q } },
-        ],
-      }
-    : undefined;
+  const where: any = { tenantId };
+  if (q) {
+    where.OR = [
+      { name: { contains: q } },
+      { email: { contains: q } },
+      { phone: { contains: q } },
+      { companyName: { contains: q } },
+      { npwp: { contains: q } },
+    ];
+  }
 
   const [items, total] = await prisma.$transaction([
     prisma.client.findMany({
@@ -320,6 +309,7 @@ export async function importClientsFromCsv(formData: FormData) {
 
     const c = await prisma.client.create({
       data: {
+        tenantId: actor.tenantId,
         name,
         email: emptyToNull(email),
         phone: emptyToNull(phone),
@@ -333,6 +323,7 @@ export async function importClientsFromCsv(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: actor.tenantId,
     actorUserId: actor.id,
     action: AuditAction.CREATE,
     entityType: AuditEntityType.CLIENT,

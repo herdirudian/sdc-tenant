@@ -65,10 +65,10 @@ export async function addInvoiceFollowUp(formData: FormData) {
 }
 
 export async function getAgingCollection() {
-  await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
+  const actor = await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
 
   const invoices = await prisma.invoice.findMany({
-    where: { status: InvoiceStatus.UNPAID },
+    where: { status: InvoiceStatus.UNPAID, tenantId: actor.tenantId },
     include: {
       client: true,
       project: true,
@@ -140,6 +140,7 @@ export async function getAgingCollection() {
 
 export async function getDashboardNotifications() {
   const user = await requireUser();
+  const tenantId = user.tenantId;
   const canFinance = user.role === UserRole.ADMIN || user.role === UserRole.FINANCE;
   if (!canFinance) return [];
 
@@ -152,24 +153,28 @@ export async function getDashboardNotifications() {
   const [overdue, dueSoon, followUpDue, pphUnpaid] = await Promise.all([
     prisma.invoice.count({
       where: {
+        tenantId,
         status: InvoiceStatus.UNPAID,
         dueDate: { lt: start },
       },
     }),
     prisma.invoice.count({
       where: {
+        tenantId,
         status: InvoiceStatus.UNPAID,
         dueDate: { gte: start, lte: dueSoonEnd },
       },
     }),
     prisma.invoice.count({
       where: {
+        tenantId,
         status: InvoiceStatus.UNPAID,
         nextFollowUpAt: { lte: start },
       },
     }),
     prisma.invoice.count({
       where: {
+        tenantId,
         isDeductedByClient: false,
         status: InvoiceStatus.PAID,
         pphPaidAt: null,

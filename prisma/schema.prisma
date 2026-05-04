@@ -7,8 +7,88 @@ datasource db {
   provider = "mysql"
 }
 
+model Tenant {
+  id              String            @id @default(cuid())
+  name            String
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  subscription    Subscription?
+  users           User[]
+  clients         Client[]
+  projects        Project[]
+  invoices        Invoice[]
+  expenses        Expense[]
+  ledgerEntries   LedgerEntry[]
+  bankAccounts    BankAccount[]
+  companySettings CompanySettings[]
+  auditLogs       AuditLog[]
+  emailOutbox     EmailOutbox[]
+  invitations     UserInvitation[]
+
+  @@map("tenants")
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  tenantId             String             @unique @map("tenant_id")
+  status               SubscriptionStatus @default(TRIAL)
+  planId               String?            @map("plan_id")
+  xenditSubscriptionId String?            @map("xendit_subscription_id")
+  expiresAt            DateTime?          @map("expires_at")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+  tenant               Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payments             SystemPayment[]
+
+  @@map("subscriptions")
+}
+
+model SystemPayment {
+  id               String        @id @default(cuid())
+  subscriptionId   String        @map("subscription_id")
+  externalId       String        @unique @map("external_id")
+  amount           Decimal       @db.Decimal(18, 2)
+  status           PaymentStatus @default(PENDING)
+  method           String?
+  paidAt           DateTime?     @map("paid_at")
+  xenditInvoiceUrl String?       @map("xendit_invoice_url") @db.VarChar(1024)
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  subscription     Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@map("system_payments")
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  EXPIRED
+  FAILED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+model GlobalSettings {
+  id                String   @id @default("system")
+  maintenanceMode   Boolean  @default(false) @map("maintenance_mode")
+  announcementTitle String?  @map("announcement_title")
+  announcementText  String?  @map("announcement_text") @db.Text
+  subscriptionPrice Decimal  @default(100000.00) @map("subscription_price") @db.Decimal(18, 2)
+  trialDays         Int      @default(3) @map("trial_days")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("global_settings")
+}
+
 model CompanySettings {
-  id             String        @id @default("default") @db.VarChar(32)
+  id             String        @id @default(cuid())
+  tenantId       String        @unique @map("tenant_id")
   companyName    String        @map("company_name")
   npwp           String?       @db.VarChar(32)
   address        String?       @db.Text
@@ -28,6 +108,7 @@ model CompanySettings {
   smtpUser       String?       @map("smtp_user")
   letterheadUrl  String?       @map("letterhead_url") @db.VarChar(1024)
   signatureUrl   String?       @map("signature_url") @db.VarChar(1024)
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   bankAccounts   BankAccount[]
 
   @@map("company_settings")
@@ -35,7 +116,8 @@ model CompanySettings {
 
 model BankAccount {
   id                String               @id @default(cuid())
-  companySettingsId String               @default("default") @map("company_settings_id") @db.VarChar(32)
+  tenantId          String               @map("tenant_id")
+  companySettingsId String               @map("company_settings_id") @db.VarChar(32)
   label             String
   accountName       String               @map("account_name")
   accountNumber     String               @map("account_number") @db.VarChar(64)
@@ -43,16 +125,20 @@ model BankAccount {
   createdAt         DateTime             @default(now()) @map("created_at")
   updatedAt         DateTime             @updatedAt @map("updated_at")
   companySettings   CompanySettings      @relation(fields: [companySettingsId], references: [id], onDelete: Cascade)
+  tenant            Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   invoices          InvoiceBankAccount[]
 
   @@index([companySettingsId])
+  @@index([tenantId])
   @@map("bank_accounts")
 }
 
 model User {
   id               String            @id @default(cuid())
+  tenantId         String            @map("tenant_id")
   email            String            @unique
   name             String
+  phone            String?           @db.VarChar(20)
   role             UserRole          @default(STAFF)
   passwordHash     String            @map("password_hash") @db.VarChar(255)
   createdAt        DateTime          @default(now()) @map("created_at")
@@ -63,9 +149,11 @@ model User {
   expenses         Expense[]
   invoiceFollowUps InvoiceFollowUp[]
   sessions         Session[]
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([role])
   @@index([isActive])
+  @@index([tenantId])
   @@map("users")
 }
 
@@ -95,6 +183,7 @@ model Session {
 
 model AuditLog {
   id          String          @id @default(cuid())
+  tenantId    String          @map("tenant_id")
   actorUserId String?         @map("actor_user_id")
   action      AuditAction
   entityType  AuditEntityType @map("entity_type")
@@ -105,15 +194,33 @@ model AuditLog {
   userAgent   String?         @map("user_agent") @db.VarChar(512)
   createdAt   DateTime        @default(now()) @map("created_at")
   actorUser   User?           @relation(fields: [actorUserId], references: [id])
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([actorUserId])
   @@index([entityType, entityId])
   @@index([createdAt])
+  @@index([tenantId])
   @@map("audit_logs")
+}
+
+model UserInvitation {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  email     String
+  role      UserRole @default(STAFF)
+  token     String   @unique @db.VarChar(128)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, email])
+  @@index([token])
+  @@map("user_invitations")
 }
 
 model Client {
   id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
   name        String
   email       String?
   phone       String?   @db.VarChar(50)
@@ -122,15 +229,23 @@ model Client {
   address     String?   @db.Text
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
-  portalToken String?   @unique @map("portal_token") @db.VarChar(64)
+
+  // Tax Defaults
+  defaultTaxMethod   TaxMethod             @default(EXCLUSIVE) @map("default_tax_method")
+  defaultPpnRate     Decimal               @default(0.00) @map("default_ppn_rate") @db.Decimal(5, 2)
+  defaultPphRate     Decimal               @default(0.00) @map("default_pph_rate") @db.Decimal(5, 2)
+  defaultPphType     String?               @map("default_pph_type") @db.VarChar(64)
   invoices    Invoice[]
   projects    Project[]
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@map("clients")
 }
 
 model Project {
   id          String        @id @default(cuid())
+  tenantId    String        @map("tenant_id")
   clientId    String        @map("client_id")
   name        String
   description String?       @db.Text
@@ -140,18 +255,31 @@ model Project {
   updatedAt   DateTime      @updatedAt @map("updated_at")
   invoices    Invoice[]
   client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([clientId])
+  @@index([tenantId])
   @@map("projects")
 }
 
 model Invoice {
   id                 String                @id @default(cuid())
+  tenantId           String                @map("tenant_id")
   invoiceNumber      String                @unique @map("invoice_number") @db.VarChar(64)
+  taxInvoiceNumber   String?               @map("tax_invoice_number") @db.VarChar(64)
   clientId           String                @map("client_id")
   projectId          String?               @map("project_id")
   type               InvoiceType
+  taxMethod          TaxMethod             @default(EXCLUSIVE) @map("tax_method")
   amountBruto        Decimal               @default(0.00) @map("amount_bruto") @db.Decimal(18, 2)
+  taxPpnRate         Decimal               @default(0.00) @map("tax_ppn_rate") @db.Decimal(5, 2)
+  taxPpnAmount       Decimal               @default(0.00) @map("tax_ppn_amount") @db.Decimal(18, 2)
+  taxPphRate         Decimal               @default(0.00) @map("tax_pph_rate") @db.Decimal(5, 2)
+  taxPphAmount       Decimal               @default(0.00) @map("tax_pph_amount") @db.Decimal(18, 2)
+  taxPphType         String?               @map("tax_pph_type") @db.VarChar(64)
+  taxOtherRate       Decimal               @default(0.00) @map("tax_other_rate") @db.Decimal(5, 2)
+  taxOtherAmount     Decimal               @default(0.00) @map("tax_other_amount") @db.Decimal(18, 2)
+  taxOtherLabel      String?               @map("tax_other_label") @db.VarChar(64)
   taxPphFinal        Decimal               @default(0.00) @map("tax_pph_final") @db.Decimal(18, 2)
   isDeductedByClient Boolean               @default(false) @map("is_deducted_by_client")
   status             InvoiceStatus         @default(UNPAID)
@@ -179,6 +307,7 @@ model Invoice {
   payments           InvoicePayment[]
   client             Client                @relation(fields: [clientId], references: [id], onDelete: Cascade)
   project            Project?              @relation(fields: [projectId], references: [id])
+  tenant             Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   ledgerEntries      LedgerEntry[]
 
   @@index([clientId])
@@ -187,6 +316,7 @@ model Invoice {
   @@index([approvalStatus])
   @@index([nextFollowUpAt])
   @@index([template])
+  @@index([tenantId])
   @@map("invoices")
 }
 
@@ -267,6 +397,7 @@ model InvoiceAttachment {
 
 model EmailOutbox {
   id                String            @id @default(cuid())
+  tenantId          String            @map("tenant_id")
   type              EmailMessageType
   status            EmailOutboxStatus @default(PENDING)
   dedupeKey         String?           @unique @map("dedupe_key")
@@ -289,16 +420,19 @@ model EmailOutbox {
   attachments       String?           @db.LongText
   createdByUser     User?             @relation("EmailCreatedBy", fields: [createdByUserId], references: [id])
   invoice           Invoice?          @relation(fields: [invoiceId], references: [id])
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([status, scheduledAt])
   @@index([invoiceId])
   @@index([lockedAt])
   @@index([createdByUserId], map: "email_outbox_created_by_user_id_fkey")
+  @@index([tenantId])
   @@map("email_outbox")
 }
 
 model Expense {
   id              String        @id @default(cuid())
+  tenantId        String        @map("tenant_id")
   occurredAt      DateTime      @map("occurred_at")
   amount          Decimal       @default(0.00) @db.Decimal(18, 2)
   category        String        @db.VarChar(64)
@@ -312,15 +446,18 @@ model Expense {
   attachmentUrl   String?       @map("attachment_url") @db.VarChar(1024)
   createdByUser   User?         @relation(fields: [createdByUserId], references: [id])
   ledgerEntry     LedgerEntry?
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([occurredAt])
   @@index([category])
   @@index([createdByUserId], map: "expenses_created_by_user_id_fkey")
+  @@index([tenantId])
   @@map("expenses")
 }
 
 model LedgerEntry {
   id          String          @id @default(cuid())
+  tenantId    String          @map("tenant_id")
   type        LedgerEntryType
   occurredAt  DateTime        @map("occurred_at")
   amount      Decimal         @default(0.00) @db.Decimal(18, 2)
@@ -334,10 +471,12 @@ model LedgerEntry {
   expense     Expense?        @relation(fields: [expenseId], references: [id])
   invoice     Invoice?        @relation(fields: [invoiceId], references: [id])
   payment     InvoicePayment? @relation(fields: [paymentId], references: [id])
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([occurredAt])
   @@index([type])
   @@index([invoiceId])
+  @@index([tenantId])
   @@map("ledger_entries")
 }
 
@@ -348,9 +487,13 @@ enum ProjectStatus {
 }
 
 enum InvoiceType {
-  DP
-  PROGRESS
-  FINAL
+  PROFESSIONAL
+  SIMPLE
+}
+
+enum TaxMethod {
+  EXCLUSIVE
+  INCLUSIVE
 }
 
 enum InvoiceStatus {
@@ -386,6 +529,8 @@ enum EmailMessageType {
   REMINDER_DUE_SOON
   REMINDER_DUE_TOMORROW
   REMINDER_OVERDUE
+  SUBSCRIPTION_EXPIRING_SOON
+  WEEKLY_REVENUE_REPORT
 }
 
 enum EmailOutboxStatus {

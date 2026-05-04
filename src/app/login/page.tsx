@@ -1,6 +1,11 @@
 import { bootstrapAdmin } from "@/actions/auth";
 import { LoginForm } from "@/components/auth/login-form";
 
+export const metadata = {
+  title: "Masuk | Solusi Invoice",
+  description: "Masuk ke akun Solusi Invoice Anda",
+};
+
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage({
@@ -23,12 +28,17 @@ export default async function LoginPage({
             : null;
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Login</h1>
-        <p className="text-sm text-muted-foreground">
-          Masuk ke Sistem Internal PT Solusi Digital Creative.
-        </p>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2 text-center">
+        <div className="flex justify-center">
+          <img src="/icon.png" alt="Solusi Invoice" className="h-20 w-auto" />
+        </div>
+        <div className="mt-4">
+          <h1 className="text-xl font-semibold tracking-tight">Login</h1>
+          <p className="text-sm text-muted-foreground">
+            Masuk ke Solusi Invoice.
+          </p>
+        </div>
       </div>
 
       <LoginForm initialMessage={initialMessage} />

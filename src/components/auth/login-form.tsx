@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import Link from "next/link";
 
 type AuthMode = "login" | "forgot" | "reset";
 
@@ -94,13 +95,20 @@ export function LoginForm({ initialMessage }: { initialMessage?: string | null }
             <Input id="password" name="password" type="password" required />
           </div>
           <Button type="submit" disabled={isPending}>
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Login
-          </Button>
-        </form>
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Login
+        </Button>
+      </form>
+
+      <div className="text-center text-sm">
+        Belum punya akun?{" "}
+        <a href="/register" className="text-primary hover:underline font-medium">
+          Daftar sekarang
+        </a>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   if (mode === "forgot") {
     return (

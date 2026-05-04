@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PaymentMethod } from "@/generated/prisma/enums";
-import { Zap, Loader2, Paperclip, X } from "lucide-react";
-import { scanReceiptAction, createExpenseAction, updateExpenseAction } from "@/actions/expense";
+import { Loader2, Paperclip, X } from "lucide-react";
+import { createExpenseAction, updateExpenseAction } from "@/actions/expense";
 
 interface ExpenseFormProps {
   editExpense?: any;
@@ -15,7 +15,6 @@ interface ExpenseFormProps {
 }
 
 export function ExpenseForm({ editExpense, defaultCategories }: ExpenseFormProps) {
-  const [isScanning, setIsScanning] = useState(false);
   const [formData, setFormData] = useState({
     occurredAt: editExpense ? new Date(editExpense.occurredAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     amount: editExpense ? editExpense.amount.toString() : "",
@@ -27,43 +26,9 @@ export function ExpenseForm({ editExpense, defaultCategories }: ExpenseFormProps
     attachmentUrl: editExpense ? editExpense.attachmentUrl ?? "" : "",
   });
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsScanning(true);
-    const scanFormData = new FormData();
-    scanFormData.append("file", file);
-
-    try {
-      const result = await scanReceiptAction(scanFormData);
-      if (result.success && result.data) {
-        setFormData(prev => ({
-          ...prev,
-          amount: result.data.amount?.toString() || prev.amount,
-          occurredAt: result.data.occurredAt || prev.occurredAt,
-          category: result.data.category || prev.category,
-          description: result.data.description || prev.description,
-          vendor: result.data.vendor || prev.vendor,
-          attachmentUrl: result.data.attachmentUrl || prev.attachmentUrl,
-        }));
-      } else {
-        alert(result.error || "Gagal memproses struk");
-      }
-    } catch (error) {
-      console.error("Scanning failed:", error);
-      alert("Terjadi kesalahan saat memproses struk.");
-    } finally {
-      setIsScanning(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -84,36 +49,7 @@ export function ExpenseForm({ editExpense, defaultCategories }: ExpenseFormProps
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <input
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          accept="image/*"
-          onChange={handleScan}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full h-10 border-dashed border-red-300 hover:border-red-500 hover:bg-red-50 text-xs sm:text-sm"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isScanning}
-        >
-          {isScanning ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Memindai Struk...
-            </>
-          ) : (
-            <>
-              <Zap className="mr-2 h-4 w-4 text-red-500" />
-              Scan Struk (AI)
-            </>
-          )}
-        </Button>
-      </div>
-
-      <form onSubmit={handleSubmit} className="grid gap-4 sm:gap-5">
+      <form action={handleSubmit} className="grid gap-4">
         {editExpense && <input type="hidden" name="id" value={editExpense.id} />}
         <input type="hidden" name="attachmentUrl" value={formData.attachmentUrl} />
         

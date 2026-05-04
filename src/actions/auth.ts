@@ -11,7 +11,7 @@ import {
   clearSessionCookie,
 } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
-import { AuditAction, AuditEntityType, UserRole } from "@/generated/prisma/client";
+import { AuditAction, AuditEntityType, UserRole, SubscriptionStatus } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -45,6 +45,7 @@ export async function signIn(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId: user.tenantId,
     actorUserId: user.id,
     action: AuditAction.LOGIN,
     entityType: AuditEntityType.USER,
@@ -64,17 +65,20 @@ export async function signOut() {
 
   await clearSessionCookie();
 
-  await writeAuditLog({
-    actorUserId: session?.userId,
-    action: AuditAction.LOGOUT,
-    entityType: AuditEntityType.USER,
-    entityId: session?.userId ?? null,
-    ip: meta.ip,
-    userAgent: meta.userAgent,
-  });
+  if (session?.user) {
+    await writeAuditLog({
+      tenantId: session.user.tenantId,
+      actorUserId: session.userId,
+      action: AuditAction.LOGOUT,
+      entityType: AuditEntityType.USER,
+      entityId: session.userId,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+  }
 
   revalidatePath("/");
-  redirect("/login");
+  redirect("/");
 }
 
 const forgotPasswordSchema = z.object({
@@ -112,10 +116,11 @@ export async function requestPasswordReset(formData: FormData) {
   });
 
   try {
-    const settings = await prisma.companySettings.findUnique({ where: { id: "default" } });
-    const companyName = settings?.companyName || "Sistem Invoice SDC";
+    const settings = await prisma.companySettings.findFirst({ where: { tenantId: user.tenantId } });
+    const companyName = settings?.companyName || "Solusi Invoice";
 
     await sendEmail({
+      tenantId: user.tenantId,
       to: user.email,
       subject: `Kode Verifikasi Reset Password - ${companyName}`,
       html: `
@@ -233,13 +238,33 @@ export async function bootstrapAdmin() {
     return;
   }
 
+  const tenant = await prisma.tenant.create({
+    data: { name: "Default Tenant" }
+  });
+
   await prisma.user.create({
     data: {
+      tenantId: tenant.id,
       email,
       name: "Administrator",
       role: UserRole.ADMIN,
       isActive: true,
       passwordHash: createPasswordHash(password),
     },
+  });
+
+  await prisma.companySettings.create({
+    data: {
+      tenantId: tenant.id,
+      companyName: "Default Company",
+    }
+  });
+
+  await prisma.subscription.create({
+    data: {
+      tenantId: tenant.id,
+      status: SubscriptionStatus.TRIAL,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+    }
   });
 }

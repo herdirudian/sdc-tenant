@@ -1,12 +1,13 @@
 import Link from "next/link";
 
 import { deleteClient, getClientsPaged } from "@/actions/client";
-import { requireRole } from "@/lib/auth";
+import { getSession, requireRole, requireSubscription } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { UserRole } from "@/generated/prisma/client";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,13 @@ export default async function ClientsPage({
 }: {
   searchParams: Promise<{ q?: string; page?: string; imported?: string }>;
 }) {
-  const user = await requireRole([UserRole.ADMIN, UserRole.STAFF, UserRole.FINANCE]);
+  const session = await getSession();
+  if (!session) redirect("/login");
+  
+  await requireSubscription();
+  
+  const user = session.user;
+  await requireRole([UserRole.ADMIN, UserRole.STAFF, UserRole.FINANCE]);
   const { q, page, imported } = await searchParams;
   const pageNumber = page ? Number(page) : 1;
   const result = await getClientsPaged({ q, page: Number.isFinite(pageNumber) ? pageNumber : 1 });

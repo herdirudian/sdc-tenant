@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/auth";
+import { requireRole, requireSubscription } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +17,8 @@ export default async function AuditLogPage({
 }: {
   searchParams: Promise<{ q?: string; action?: string; entityType?: string }>;
 }) {
-  await requireRole([UserRole.ADMIN]);
+  await requireSubscription();
+  const actor = await requireRole([UserRole.ADMIN]);
   const { q, action, entityType } = await searchParams;
   const query = q?.trim();
 
@@ -25,6 +26,7 @@ export default async function AuditLogPage({
   const entityTypeParsed = entityType ? AuditEntityType[entityType as keyof typeof AuditEntityType] : undefined;
 
   const where = {
+    tenantId: actor.tenantId,
     ...(actionParsed ? { action: actionParsed } : {}),
     ...(entityTypeParsed ? { entityType: entityTypeParsed } : {}),
     ...(query

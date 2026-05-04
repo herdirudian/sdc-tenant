@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getRequestMeta, requireRole } from "@/lib/auth";
+import { getRequestMeta, requireRole, requireTenant } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
 import { AuditAction, AuditEntityType, UserRole } from "@/generated/prisma/client";
 import { AppEncryptionKeyError, encryptSecret } from "@/lib/secret";
@@ -106,21 +106,27 @@ async function tryDeletePublicFile(url: string) {
 }
 
 export async function getCompanySettings() {
-  const settings = await prisma.companySettings.findUnique({
-    where: { id: "default" },
+  const { tenantId, tenant } = await requireTenant();
+  const settings = await prisma.companySettings.findFirst({
+    where: { tenantId },
     include: { bankAccounts: { orderBy: { createdAt: "asc" } } },
   });
 
   if (settings) return settings;
 
   return prisma.companySettings.create({
-    data: { id: "default", companyName: "PT Solusi Digital Creative" },
+    data: { 
+      tenantId, 
+      companyName: tenant.name || "Sistem Invoice SDC" 
+    },
     include: { bankAccounts: { orderBy: { createdAt: "asc" } } },
   });
 }
 
 export async function updateCompanySettings(formData: FormData) {
-  const actor = await requireRole([UserRole.ADMIN]);
+  const { tenantId, user: actor } = await requireTenant();
+  if (actor.role !== UserRole.ADMIN) redirect("/settings?error=forbidden");
+
   const parsed = companySchema.safeParse({
     companyName: formData.get("companyName"),
     npwp: formData.get("npwp"),
@@ -150,18 +156,18 @@ export async function updateCompanySettings(formData: FormData) {
   const signatureFile =
     maybeSignatureFile instanceof File && maybeSignatureFile.size > 0 ? maybeSignatureFile : null;
 
-  const before = await prisma.companySettings.findUnique({ where: { id: "default" } });
+  const before = await prisma.companySettings.findFirst({ where: { tenantId } });
 
   const finalLogoUrl = logoFile
-    ? await savePublicUpload({ folder: "settings", file: logoFile })
+    ? await savePublicUpload({ folder: `settings/${tenantId}`, file: logoFile })
     : emptyToNull(parsed.data.logoUrl);
 
   const finalLetterheadUrl = letterheadFile
-    ? await savePublicUpload({ folder: "settings", file: letterheadFile })
+    ? await savePublicUpload({ folder: `settings/${tenantId}`, file: letterheadFile })
     : emptyToNull(parsed.data.letterheadUrl);
 
   const finalSignatureUrl = signatureFile
-    ? await savePublicUpload({ folder: "settings", file: signatureFile })
+    ? await savePublicUpload({ folder: `settings/${tenantId}`, file: signatureFile })
     : emptyToNull(parsed.data.signatureUrl);
 
   // Delete old files if replaced
@@ -180,9 +186,9 @@ export async function updateCompanySettings(formData: FormData) {
   }
 
   const after = await prisma.companySettings.upsert({
-    where: { id: "default" },
+    where: { id: before?.id || "new" },
     create: {
-      id: "default",
+      tenantId,
       companyName: parsed.data.companyName,
       npwp: emptyToNull(parsed.data.npwp),
       address: emptyToNull(parsed.data.address),
@@ -212,10 +218,11 @@ export async function updateCompanySettings(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId,
     actorUserId: actor.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.SETTINGS,
-    entityId: "default",
+    entityId: after.id,
     beforeJson: before ?? undefined,
     afterJson: after,
     ip: meta.ip,
@@ -229,7 +236,9 @@ export async function updateCompanySettings(formData: FormData) {
 }
 
 export async function updateSmtpSettings(formData: FormData) {
-  const actor = await requireRole([UserRole.ADMIN]);
+  const { tenantId, user: actor } = await requireTenant();
+  if (actor.role !== UserRole.ADMIN) redirect("/settings?error=forbidden");
+
   const parsed = smtpSchema.safeParse({
     smtpHost: formData.get("smtpHost"),
     smtpPort: formData.get("smtpPort"),
@@ -240,7 +249,7 @@ export async function updateSmtpSettings(formData: FormData) {
   });
   if (!parsed.success) redirect("/settings?error=invalid");
 
-  const before = await prisma.companySettings.findUnique({ where: { id: "default" } });
+  const before = await prisma.companySettings.findFirst({ where: { tenantId } });
   let passEnc: string | undefined;
   if (parsed.data.smtpPass && parsed.data.smtpPass !== "") {
     try {
@@ -258,11 +267,11 @@ export async function updateSmtpSettings(formData: FormData) {
   }
 
   const after = await prisma.companySettings.upsert({
-    where: { id: "default" },
+    where: { id: before?.id || "new" },
     create: {
-      id: "default",
-      companyName: "PT Solusi Digital Creative",
-      defaultDueDays: 14,
+      tenantId,
+      companyName: before?.companyName || "Sistem Invoice SDC",
+      defaultDueDays: before?.defaultDueDays || 14,
       smtpHost: parsed.data.smtpHost,
       smtpPort: parsed.data.smtpPort,
       smtpSecure: parsed.data.smtpSecure,
@@ -282,6 +291,7 @@ export async function updateSmtpSettings(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId,
     actorUserId: actor.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.SETTINGS,
@@ -312,7 +322,7 @@ export async function updateSmtpSettings(formData: FormData) {
 }
 
 export async function testSmtpSettings(formData: FormData) {
-  await requireRole([UserRole.ADMIN]);
+  const actor = await requireRole([UserRole.ADMIN]);
   const parsed = smtpTestSchema.safeParse({
     toEmail: formData.get("toEmail"),
   });
@@ -320,9 +330,16 @@ export async function testSmtpSettings(formData: FormData) {
 
   try {
     await sendEmail({
+      tenantId: actor.tenantId,
       to: parsed.data.toEmail,
-      subject: "SMTP Test - INV SDC",
-      html: "<div>SMTP test email berhasil.</div>",
+      subject: `Test Email SMTP - Solusi Invoice`,
+      html: `
+        <div style="font-family: sans-serif; padding: 20px;">
+          <h2>Test SMTP Berhasil!</h2>
+          <p>Email ini dikirim untuk memverifikasi pengaturan SMTP Anda di <b>Solusi Invoice</b>.</p>
+          <p>Jika Anda menerima email ini, berarti konfigurasi email Anda sudah benar.</p>
+        </div>
+      `,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "failed";
@@ -334,6 +351,8 @@ export async function testSmtpSettings(formData: FormData) {
 
 export async function createBankAccount(formData: FormData) {
   const actor = await requireRole([UserRole.ADMIN]);
+  const { tenantId } = actor;
+
   const parsed = bankSchema.safeParse({
     label: formData.get("label"),
     accountName: formData.get("accountName"),
@@ -343,8 +362,18 @@ export async function createBankAccount(formData: FormData) {
 
   if (!parsed.success) redirect("/settings?error=invalid");
 
+  const companySettings = await prisma.companySettings.findFirst({
+    where: { tenantId },
+  });
+
+  if (!companySettings) {
+    redirect("/settings?error=no_settings");
+  }
+
   const created = await prisma.bankAccount.create({
     data: {
+      tenantId,
+      companySettingsId: companySettings.id,
       label: parsed.data.label,
       accountName: parsed.data.accountName,
       accountNumber: parsed.data.accountNumber,
@@ -369,14 +398,22 @@ export async function createBankAccount(formData: FormData) {
 
 export async function toggleBankAccount(formData: FormData) {
   const actor = await requireRole([UserRole.ADMIN]);
+  const { tenantId } = actor;
   const id = z.string().min(1).parse(formData.get("id"));
   const isActive = z
     .enum(["true", "false"])
     .transform((v) => v === "true")
     .parse(formData.get("isActive"));
 
-  const before = await prisma.bankAccount.findUnique({ where: { id } });
-  const after = await prisma.bankAccount.update({ where: { id }, data: { isActive } });
+  const before = await prisma.bankAccount.findUnique({ 
+    where: { id, tenantId } 
+  });
+  if (!before) redirect("/settings?error=not_found");
+
+  const after = await prisma.bankAccount.update({ 
+    where: { id, tenantId }, 
+    data: { isActive } 
+  });
 
   const meta = await getRequestMeta();
   await writeAuditLog({
@@ -396,10 +433,17 @@ export async function toggleBankAccount(formData: FormData) {
 
 export async function deleteBankAccount(formData: FormData) {
   const actor = await requireRole([UserRole.ADMIN]);
+  const { tenantId } = actor;
   const id = z.string().min(1).parse(formData.get("id"));
 
-  const before = await prisma.bankAccount.findUnique({ where: { id } });
-  await prisma.bankAccount.delete({ where: { id } });
+  const before = await prisma.bankAccount.findUnique({ 
+    where: { id, tenantId } 
+  });
+  if (!before) redirect("/settings?error=not_found");
+
+  await prisma.bankAccount.delete({ 
+    where: { id, tenantId } 
+  });
 
   const meta = await getRequestMeta();
   await writeAuditLog({

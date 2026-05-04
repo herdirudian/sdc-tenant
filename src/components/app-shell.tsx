@@ -21,26 +21,35 @@ const navItems: { href: string; label: string; icon: IconName; roles: UserRole[]
   { href: "/settings", label: "Settings", icon: "settings", roles: [UserRole.ADMIN] },
   { href: "/users", label: "Users", icon: "users", roles: [UserRole.ADMIN] },
   { href: "/audit-log", label: "Audit Log", icon: "audit", roles: [UserRole.ADMIN] },
+  { href: "/admin", label: "System Owner", icon: "dashboard", roles: [UserRole.ADMIN] },
 ];
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const session = await getSession();
+  
   if (!session) {
     return <>{children}</>;
   }
   const user = session.user;
-  const items = navItems.filter((i) => i.roles.includes(user.role));
+  const ownerEmail = "admin@sdc.local"; // Consistent with saas-admin.ts
+  const items = navItems.filter((i) => {
+    // Only show System Owner menu to the specific system admin email
+    if (i.href === "/admin") {
+      return user.email === ownerEmail;
+    }
+    return i.roles.includes(user.role);
+  });
   return (
     <div className="min-h-screen bg-muted/30">
       <div className="mx-auto flex w-full flex-col gap-4 p-3 sm:gap-4 sm:p-4 md:flex-row md:gap-6 md:p-6">
         <aside className="hidden w-72 shrink-0 flex-col gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm md:flex print:hidden">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <img src="/icon.png" alt="Solusi Digital Creative" className="h-16 w-auto" />
+              <img src="/icon.png" alt="Solusi Invoice" className="h-16 w-auto" />
               <div className="mt-2 truncate text-sm font-semibold leading-tight">
-                PT Solusi Digital Creative
+                Solusi Invoice
               </div>
-              <div className="text-xs text-muted-foreground">Internal System</div>
+              <div className="text-xs text-muted-foreground">Dashboard Bisnis</div>
             </div>
             <ModeToggle />
           </div>
@@ -87,7 +96,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
               <MobileNav items={items} />
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold leading-tight">
-                  SDC System
+                  Invoice SDC
                 </div>
               </div>
             </div>

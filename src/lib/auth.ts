@@ -108,7 +108,17 @@ export async function getSession() {
 
   const session = await prisma.session.findUnique({
     where: { id: parsed.sid },
-    include: { user: true },
+    include: {
+      user: {
+        include: {
+          tenant: {
+            include: {
+              subscription: true,
+            },
+          },
+        },
+      },
+    },
   });
   if (!session) return null;
   if (session.expiresAt.getTime() < Date.now()) return null;
@@ -117,8 +127,30 @@ export async function getSession() {
 
 export async function requireUser() {
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) return null as any;
   return session.user;
+}
+
+export async function requireTenant() {
+  const session = await getSession();
+  if (!session || !session.user.tenantId) redirect("/login");
+  
+  const subscription = session.user.tenant.subscription;
+  return {
+    tenantId: session.user.tenantId,
+    user: session.user,
+    tenant: session.user.tenant,
+    subscription,
+  };
+}
+
+export async function requireSubscription() {
+  const tenantInfo = await requireTenant();
+  const { subscription } = tenantInfo;
+  if (!subscription || (subscription.status !== "ACTIVE" && subscription.status !== "TRIAL")) {
+    redirect("/checkout");
+  }
+  return tenantInfo;
 }
 
 export async function requireRole(roles: UserRole[]) {

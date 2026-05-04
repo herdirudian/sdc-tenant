@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requireSubscription } from "@/lib/auth";
 import { formatDateID, formatIDR } from "@/lib/format";
 import { PaymentMethod, UserRole, Prisma } from "@/generated/prisma/client";
 import { Plus, Filter, Trash2, ArrowLeft, Pencil, X, Paperclip } from "lucide-react";
@@ -34,6 +34,7 @@ export default async function ExpensesPage({
     editId?: string;
   }>;
 }) {
+  await requireSubscription();
   const user = await requireUser();
   const canFinance = user.role === UserRole.ADMIN || user.role === UserRole.FINANCE;
   if (!canFinance) return null;
