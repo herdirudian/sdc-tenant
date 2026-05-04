@@ -188,17 +188,16 @@ export async function getDashboardData() {
   if (!subscription || (subscription.status !== "ACTIVE" && subscription.status !== "TRIAL")) {
     return {
       summary: {
-        totalRevenue: 0,
-        totalExpenses: 0,
-        netProfit: 0,
-        unpaidInvoicesCount: 0,
-        unpaidInvoicesAmount: 0,
-        paidInvoicesCount: 0,
-        upcomingFollowUps: 0,
-        overdueInvoicesCount: 0,
-        aging: { "0-30": 0, "31-60": 0, "61-90": 0, "90+": 0 },
-        taxPayableThisMonth: 0,
-        taxPayableTotal: 0
+        totalRevenue: "0",
+        totalExpenses: "0",
+        netProfit: "0",
+        pendingPayments: "0",
+        pendingCount: 0,
+        totalTaxToPay: "0",
+        taxToPayThisMonth: "0",
+        activeProjects: 0,
+        agingSummary: { "0-30": 0, "31-60": 0, "61-90": 0, "90+": 0 },
+        expenseBreakdown: []
       },
       onboarding: { 
         steps: [], 
