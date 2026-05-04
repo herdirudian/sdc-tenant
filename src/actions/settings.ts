@@ -383,6 +383,7 @@ export async function createBankAccount(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId,
     actorUserId: actor.id,
     action: AuditAction.CREATE,
     entityType: AuditEntityType.BANK_ACCOUNT,
@@ -417,6 +418,7 @@ export async function toggleBankAccount(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId,
     actorUserId: actor.id,
     action: AuditAction.UPDATE,
     entityType: AuditEntityType.BANK_ACCOUNT,
@@ -447,6 +449,7 @@ export async function deleteBankAccount(formData: FormData) {
 
   const meta = await getRequestMeta();
   await writeAuditLog({
+    tenantId,
     actorUserId: actor.id,
     action: AuditAction.DELETE,
     entityType: AuditEntityType.BANK_ACCOUNT,
