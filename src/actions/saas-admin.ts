@@ -279,10 +279,13 @@ export async function getRevenueStats() {
   });
 
   return {
-    mrr: mrrResult._sum.amount || 0,
-    totalRevenue: totalRevenue._sum.amount || 0,
+    mrr: (mrrResult._sum.amount || 0).toString(),
+    totalRevenue: (totalRevenue._sum.amount || 0).toString(),
     conversionRate,
-    recentPayments,
+    recentPayments: recentPayments.map(p => ({
+      ...p,
+      amount: p.amount.toString()
+    })),
   };
 }
 
