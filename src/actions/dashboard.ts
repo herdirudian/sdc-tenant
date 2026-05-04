@@ -200,7 +200,12 @@ export async function getDashboardData() {
         taxPayableThisMonth: 0,
         taxPayableTotal: 0
       },
-      onboarding: { isCompleted: false, steps: [] },
+      onboarding: { 
+        steps: [], 
+        completedCount: 0, 
+        totalSteps: 0, 
+        isFinished: false 
+      },
       recentInvoices: [],
       recentActivity: [],
       notifications: [],
