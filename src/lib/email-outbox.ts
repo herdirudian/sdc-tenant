@@ -193,6 +193,7 @@ export async function enqueueInvoiceEmail(input: {
   try {
     return await prisma.emailOutbox.create({
       data: {
+        tenantId: invoice.tenantId,
         type: input.type,
         status: EmailOutboxStatus.PENDING,
         dedupeKey: input.dedupeKey ?? null,
@@ -355,6 +356,7 @@ export async function enqueueReceiptEmail(input: {
 
   return await prisma.emailOutbox.create({
     data: {
+      tenantId: invoice.tenantId,
       type: EmailMessageType.RECEIPT_SENT,
       status: EmailOutboxStatus.PENDING,
       invoiceId: invoice.id,
@@ -368,6 +370,7 @@ export async function enqueueReceiptEmail(input: {
 }
 
 export async function enqueueInternalNotification(input: {
+  tenantId: string;
   toEmails: string[];
   subject: string;
   html: string;
@@ -375,6 +378,7 @@ export async function enqueueInternalNotification(input: {
   createdByUserId?: string | null;
 }) {
   const jobs = input.toEmails.map(email => ({
+    tenantId: input.tenantId,
     type: input.type ?? EmailMessageType.INVOICE_SENT, // Use a generic type if not specified
     status: EmailOutboxStatus.PENDING,
     toEmail: email,

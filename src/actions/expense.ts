@@ -143,6 +143,7 @@ export async function createExpenseAction(formData: FormData) {
       const formattedAmount = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(amount.toNumber());
       
       await enqueueInternalNotification({
+        tenantId: actor.tenantId,
         toEmails: emails,
         subject: `[NOTIFIKASI] Pengeluaran Besar: ${parsed.data.category}`,
         html: `
