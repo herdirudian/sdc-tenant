@@ -367,65 +367,75 @@ export async function createInvoice(formData: FormData) {
 
 export async function updateInvoicePresentation(formData: FormData) {
   const actor = await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
-  const parsed = invoicePresentationSchema.safeParse({
-    invoiceId: formData.get("invoiceId"),
-    template: formData.get("template"),
-    poReference: formData.get("poReference"),
-    terms: formData.get("terms"),
-    footer: formData.get("footer"),
-    bankAccountIds: formData.getAll("bankAccountIds"),
+  const invoiceId = z.string().min(1).parse(formData.get("invoiceId"));
+
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    include: { client: true, items: true, bankAccounts: { include: { bankAccount: true } } },
   });
 
-  if (!parsed.success) redirect(`/invoices/${String(formData.get("invoiceId"))}?error=invalid`);
+  if (!invoice) redirect("/invoices");
 
-  const bankAccountIds = Array.from(new Set(parsed.data.bankAccountIds)).filter(Boolean);
-
-  const before = await prisma.invoice.findUnique({
-    where: { id: parsed.data.invoiceId },
-    include: { bankAccounts: true },
+  // Get dynamic settings
+  const settings = await prisma.companySettings.findFirst({
+    where: { tenantId: invoice.tenantId },
   });
-  if (!before) redirect("/invoices");
 
-  const after = await prisma.$transaction(async (tx) => {
-    await tx.invoiceBankAccount.deleteMany({ where: { invoiceId: parsed.data.invoiceId } });
-    if (bankAccountIds.length > 0) {
-      await tx.invoiceBankAccount.createMany({
-        data: bankAccountIds.map((bankAccountId) => ({
-          invoiceId: parsed.data.invoiceId,
-          bankAccountId,
-        })),
-        skipDuplicates: true,
-      });
-    }
+  if (!settings) {
+    return { error: "Silakan lengkapi profil perusahaan di halaman Settings terlebih dahulu." };
+  }
 
-    return tx.invoice.update({
-      where: { id: parsed.data.invoiceId },
-      data: {
-        template: parsed.data.template,
-        poReference: parsed.data.poReference === "" ? null : parsed.data.poReference,
-        terms: parsed.data.terms === "" ? null : parsed.data.terms,
-        footer: parsed.data.footer === "" ? null : parsed.data.footer,
+  const pdfBuffer = await generateInvoicePdf(
+    {
+      invoiceNumber: invoice.invoiceNumber,
+      taxInvoiceNumber: invoice.taxInvoiceNumber,
+      createdAt: invoice.createdAt,
+      dueDate: invoice.dueDate,
+      type: invoice.type,
+      poReference: invoice.poReference,
+      taxMethod: invoice.taxMethod,
+      amountBruto: Number(invoice.amountBruto),
+      taxPpnRate: Number(invoice.taxPpnRate),
+      taxPpnAmount: Number(invoice.taxPpnAmount),
+      taxPphRate: Number(invoice.taxPphRate),
+      taxPphAmount: Number(invoice.taxPphAmount),
+      taxPphType: invoice.taxPphType,
+      taxOtherRate: Number(invoice.taxOtherRate),
+      taxOtherAmount: Number(invoice.taxOtherAmount),
+      taxOtherLabel: invoice.taxOtherLabel,
+      taxPphFinal: Number(invoice.taxPphFinal),
+      isDeductedByClient: invoice.isDeductedByClient,
+      client: {
+        name: invoice.client.name,
+        companyName: invoice.client.companyName,
+        address: invoice.client.address,
+        npwp: invoice.client.npwp,
       },
-    });
-  });
+      items: invoice.items.map((item) => ({
+        description: item.description,
+        quantity: Number(item.quantity),
+        price: Number(item.price),
+        amount: Number(item.amount),
+      })),
+      bankAccounts: invoice.bankAccounts.map((ba) => ({
+        accountName: ba.bankAccount.accountName,
+        accountNumber: ba.bankAccount.accountNumber,
+        label: ba.bankAccount.label,
+      })),
+    },
+    {
+      companyName: settings.companyName,
+      address: settings.address,
+      npwp: settings.npwp,
+      logoUrl: settings.logoUrl,
+      signatureUrl: settings.signatureUrl,
+      letterheadUrl: settings.letterheadUrl,
+      signatureName: settings.signatureName,
+      signatureTitle: settings.signatureTitle,
+    },
+  );
 
-  const meta = await getRequestMeta();
-  await writeAuditLog({
-    tenantId: actor.tenantId,
-    actorUserId: actor.id,
-    action: AuditAction.UPDATE,
-    entityType: AuditEntityType.INVOICE,
-    entityId: parsed.data.invoiceId,
-    beforeJson: { template: before.template, poReference: before.poReference, terms: before.terms, footer: before.footer, bankAccountIds: before.bankAccounts.map(b => b.bankAccountId) },
-    afterJson: { template: after.template, poReference: after.poReference, terms: after.terms, footer: after.footer, bankAccountIds },
-    ip: meta.ip,
-    userAgent: meta.userAgent,
-  });
-
-  revalidatePath(`/invoices/${after.id}`);
-  revalidatePath(`/invoices/${after.id}/print`);
-  revalidatePath("/invoices");
-  redirect(`/invoices/${after.id}`);
+  return { success: true }; // Just to maintain function signature if needed
 }
 
 export async function approveInvoice(formData: FormData) {
