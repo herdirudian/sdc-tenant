@@ -1,4 +1,5 @@
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 const { PrismaClient, UserRole } = require("@prisma/client");
 const { randomBytes, scryptSync } = require("node:crypto");
 
@@ -9,7 +10,18 @@ function createPasswordHash(password) {
 }
 
 async function main() {
-  const prisma = new PrismaClient();
+  if (!process.env.DATABASE_URL) {
+    console.error("Error: DATABASE_URL is not set in .env file");
+    process.exit(1);
+  }
+
+  const prisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL,
+      },
+    },
+  });
   try {
     const adminEmail = process.env.ADMIN_EMAIL ?? "admin@sdc.local";
     const adminPassword = process.env.ADMIN_PASSWORD ?? "change-me";
