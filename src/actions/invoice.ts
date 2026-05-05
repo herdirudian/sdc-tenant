@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getRequestMeta, requireRole, requireTenant } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
 import { enqueueInvoiceEmail } from "@/lib/email-outbox";
+import { generateInvoicePdf } from "@/lib/invoice-pdf";
 import {
   AuditAction,
   AuditEntityType,
