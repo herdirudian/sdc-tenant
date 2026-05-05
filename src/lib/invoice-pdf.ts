@@ -54,142 +54,119 @@ interface CompanySettings {
 
 function getFont(isBold = false): string | Buffer {
   const fontFileName = isBold ? "arialbd.ttf" : "arial.ttf";
-  const attemptedPaths: string[] = [];
-
   try {
-    // 1. Try public folder (often safest in Next.js)
     const publicPath = path.join(process.cwd(), "public", "fonts", fontFileName);
-    attemptedPaths.push(publicPath);
     if (fs.existsSync(publicPath)) return fs.readFileSync(publicPath);
-
-    // 2. Try src/lib/fonts folder
     const libPath = path.join(process.cwd(), "src", "lib", "fonts", fontFileName);
-    attemptedPaths.push(libPath);
     if (fs.existsSync(libPath)) return fs.readFileSync(libPath);
-
-    // 3. Try Windows system fonts
     if (process.platform === "win32") {
       const sysPath = path.join("C:", "Windows", "Fonts", fontFileName);
-      attemptedPaths.push(sysPath);
       if (fs.existsSync(sysPath)) return fs.readFileSync(sysPath);
     }
-  } catch (err) {
-    // Fall through to error reporting
-  }
-  
-  // If we reach here, we failed to load any TTF font.
-  // Instead of returning Helvetica (which triggers the AFM error), 
-  // we throw a descriptive error to help debug the environment.
-  throw new Error(`Font ${fontFileName} not found. Attempted paths: ${attemptedPaths.join(", ")}. CWD: ${process.cwd()}`);
+  } catch (err) {}
+  throw new Error(`Font ${fontFileName} not found.`);
 }
 
 export async function generateInvoicePdf(invoice: InvoiceData, settings: CompanySettings): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    // Pass the font directly in the constructor to prevent PDFKit 
-    // from attempting to load the default Helvetica font (AFM).
     const doc = new PDFDocument({ 
       size: "A4", 
-      margin: 40,
+      margin: 50,
       font: getFont() as any
     });
     const chunks: Buffer[] = [];
-
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", (err) => reject(err));
 
-    // Header - Invoice Title
-    const brandColor = "#1e40af"; // Deep blue to match logo
+    const brandColor = "#1e40af"; 
+    const secondaryColor = "#64748b";
+    const accentColor = "#f8fafc";
 
-    doc.fillColor("#000000");
-    doc.fontSize(20).font(getFont(true)).text("INVOICE", 40, 60, { align: "right" });
-    doc.fontSize(10).font(getFont()).text(invoice.invoiceNumber, { align: "right" });
-    if (invoice.taxInvoiceNumber) {
-      doc.fontSize(8).font(getFont(true)).fillColor(brandColor).text(`Faktur Pajak: ${invoice.taxInvoiceNumber}`, { align: "right" });
-    }
-    if (invoice.poReference) {
-      doc.fontSize(8).font(getFont()).fillColor("#666666").text(`PO: ${invoice.poReference}`, { align: "right" });
-    }
-    
-    doc.y = 130; // Set explicit Y for Bill From/To section
-
-    // Bill From & Bill To
-    const billTop = doc.y;
-    const col2X = 320;
-
-    // Bill From
-    doc.fillColor(brandColor).fontSize(10).font(getFont(true)).text("BILL FROM", 40, billTop);
-    doc.fillColor("#000000").fontSize(11).font(getFont(true)).text(settings.companyName, 40, billTop + 15, { width: 250 });
-    doc.font(getFont()).fontSize(9).fillColor("#444444").text(settings.address || "", 40, doc.y, { width: 250 });
-    doc.text(`NPWP: ${settings.npwp || "-"}`, 40, doc.y);
-
-    // Bill To
-    doc.fillColor(brandColor).fontSize(10).font(getFont(true)).text("BILL TO", col2X, billTop);
-    doc.fillColor("#000000").fontSize(11).font(getFont(true)).text(invoice.client.companyName || invoice.client.name || "Client Name", col2X, billTop + 15, { width: 250 });
-    doc.font(getFont()).fontSize(9).fillColor("#444444").text(invoice.client.address || "", col2X, doc.y, { width: 250 });
-    doc.text(`NPWP: ${invoice.client.npwp || "-"}`, col2X, doc.y);
-    
-    doc.y = Math.max(doc.y, billTop + 100);
-    doc.moveDown(2);
-
-    // Info Grid
-    const infoTop = doc.y;
-    doc.rect(40, infoTop, 515, 40).fill("#f3f4f6");
-    
-    doc.fillColor(brandColor).fontSize(8).font(getFont(true)).text("ISSUE DATE", 60, infoTop + 10);
-    doc.fillColor("#000000").fontSize(9).font(getFont()).text(formatDateID(invoice.createdAt), 60, infoTop + 22);
-
-    doc.fillColor(brandColor).fontSize(8).font(getFont(true)).text("DUE DATE", 210, infoTop + 10);
-    doc.fillColor("#ef4444").fontSize(9).font(getFont()).text(formatDateID(invoice.dueDate), 210, infoTop + 22);
-
-    doc.fillColor(brandColor).fontSize(8).font(getFont(true)).text("TYPE", 360, infoTop + 10);
-    doc.fillColor("#000000").fontSize(9).font(getFont()).text(invoice.type, 360, infoTop + 22);
-    
-    doc.y = infoTop + 70;
-
-    // Items Table
-    const tableTop = doc.y;
-    doc.fillColor(brandColor).fontSize(9).font(getFont(true));
-    doc.text("Description", 45, tableTop);
-    doc.text("Qty", 350, tableTop, { width: 40, align: "right" });
-    doc.text("Price", 400, tableTop, { width: 75, align: "right" });
-    doc.text("Amount", 485, tableTop, { width: 70, align: "right" });
-    
-    doc.strokeColor(brandColor).lineWidth(1).moveTo(40, tableTop + 15).lineTo(555, tableTop + 15).stroke();
-    
-    let currentY = tableTop + 25;
-    doc.font(getFont()).fontSize(9).fillColor("#333333");
-
-    if (invoice.items && invoice.items.length > 0) {
-      invoice.items.forEach((item) => {
-        const descHeight = doc.heightOfString(item.description, { width: 280 });
-        doc.text(item.description, 45, currentY + 5, { width: 280 });
-        doc.text(item.quantity.toString(), 350, currentY + 5, { width: 40, align: "right" });
-        doc.text(formatIDR(item.price), 400, currentY + 5, { width: 75, align: "right" });
-        doc.text(formatIDR(item.amount), 485, currentY + 5, { width: 70, align: "right" });
-        currentY += Math.max(30, descHeight + 15);
-        
-        doc.strokeColor("#eeeeee").lineWidth(0.5).moveTo(40, currentY).lineTo(555, currentY).stroke();
-        currentY += 5;
-
-        // Check for page break
-        if (currentY > 750) {
-          doc.addPage();
-          currentY = 50;
+    // --- 1. Top Section: Logo & Company Info ---
+    if (settings.logoUrl) {
+      try {
+        const logoPath = path.join(process.cwd(), "public", settings.logoUrl.replace(/^\/+/g, ""));
+        if (fs.existsSync(logoPath)) {
+          doc.image(logoPath, 50, 45, { height: 50 });
         }
-      });
-    } else {
-      doc.text(invoice.type, 45, currentY + 5);
-      doc.text("1", 350, currentY + 5, { width: 40, align: "right" });
-      doc.text(formatIDR(invoice.amountBruto), 400, currentY + 5, { width: 75, align: "right" });
-      doc.text(formatIDR(invoice.amountBruto), 485, currentY + 5, { width: 70, align: "right" });
-      currentY += 30;
-      doc.strokeColor("#eeeeee").lineWidth(0.5).moveTo(40, currentY).lineTo(555, currentY).stroke();
+      } catch (err) {}
     }
 
-    currentY += 10;
+    doc.fillColor("#000000").fontSize(14).font(getFont(true)).text(settings.companyName, 200, 50, { align: "right" });
+    doc.fillColor(secondaryColor).fontSize(9).font(getFont()).text(settings.address || "", 200, 68, { align: "right", width: 345 });
+    doc.text(`NPWP: ${settings.npwp || "-"}`, 200, doc.y + 2, { align: "right" });
 
-    // Totals
+    // Divider
+    doc.strokeColor("#e2e8f0").lineWidth(1).moveTo(50, 110).lineTo(545, 110).stroke();
+
+    // --- 2. Invoice Meta Section ---
+    doc.fillColor(brandColor).fontSize(24).font(getFont(true)).text("INVOICE", 50, 130);
+    
+    // Right side meta data
+    const metaX = 380;
+    doc.fillColor("#000000").fontSize(10).font(getFont(true)).text("Invoice Number", metaX, 135);
+    doc.font(getFont()).text(invoice.invoiceNumber, metaX + 85, 135, { align: "right", width: 80 });
+    
+    doc.font(getFont(true)).text("Date", metaX, 150);
+    doc.font(getFont()).text(formatDateID(invoice.createdAt), metaX + 85, 150, { align: "right", width: 80 });
+    
+    doc.font(getFont(true)).text("Due Date", metaX, 165);
+    doc.fillColor("#ef4444").font(getFont()).text(formatDateID(invoice.dueDate), metaX + 85, 165, { align: "right", width: 80 });
+
+    if (invoice.taxInvoiceNumber) {
+      doc.fillColor("#000000").font(getFont(true)).text("Faktur Pajak", metaX - 20, 180);
+      doc.font(getFont()).text(invoice.taxInvoiceNumber, metaX + 85, 180, { align: "right", width: 80 });
+    }
+
+    // --- 3. Billing Info ---
+    doc.fillColor(brandColor).fontSize(10).font(getFont(true)).text("BILL TO", 50, 210);
+    doc.fillColor("#000000").fontSize(12).text(invoice.client.companyName || invoice.client.name || "Client Name", 50, 225);
+    doc.fillColor(secondaryColor).fontSize(9).font(getFont()).text(invoice.client.address || "", 50, 240, { width: 250 });
+    doc.text(`NPWP: ${invoice.client.npwp || "-"}`, 50, doc.y + 2);
+
+    // --- 4. Table Header ---
+    const tableTop = 310;
+    doc.rect(50, tableTop, 495, 25).fill(brandColor);
+    doc.fillColor("#ffffff").fontSize(9).font(getFont(true));
+    doc.text("DESCRIPTION", 60, tableTop + 8);
+    doc.text("QTY", 340, tableTop + 8, { width: 40, align: "center" });
+    doc.text("PRICE", 390, tableTop + 8, { width: 75, align: "right" });
+    doc.text("AMOUNT", 470, tableTop + 8, { width: 70, align: "right" });
+
+    // --- 5. Table Items ---
+    let currentY = tableTop + 25;
+    doc.fillColor("#000000").font(getFont()).fontSize(9);
+
+    const items = (invoice.items && invoice.items.length > 0) 
+      ? invoice.items 
+      : [{ description: invoice.type, quantity: 1, price: invoice.amountBruto, amount: invoice.amountBruto }];
+
+    items.forEach((item, index) => {
+      const descHeight = doc.heightOfString(item.description, { width: 270 });
+      const rowHeight = Math.max(30, descHeight + 15);
+
+      // Zebra striping
+      if (index % 2 === 1) {
+        doc.rect(50, currentY, 495, rowHeight).fill(accentColor);
+      }
+
+      doc.fillColor("#000000").text(item.description, 60, currentY + 10, { width: 270 });
+      doc.text(item.quantity.toString(), 340, currentY + 10, { width: 40, align: "center" });
+      doc.text(formatIDR(item.price), 390, currentY + 10, { width: 75, align: "right" });
+      doc.text(formatIDR(item.amount), 470, currentY + 10, { width: 70, align: "right" });
+      
+      currentY += rowHeight;
+      doc.strokeColor("#f1f5f9").lineWidth(0.5).moveTo(50, currentY).lineTo(545, currentY).stroke();
+
+      if (currentY > 700) {
+        doc.addPage();
+        currentY = 50;
+      }
+    });
+
+    // --- 6. Totals Section ---
+    currentY += 20;
     const bruto = invoice.amountBruto;
     const ppnRate = invoice.taxPpnRate;
     const ppnAmount = invoice.taxPpnAmount;
@@ -199,83 +176,64 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
     const otherAmount = invoice.taxOtherAmount;
     const isInclusive = invoice.taxMethod === "INCLUSIVE";
 
-    let dpp = bruto;
-    if (isInclusive) {
-      dpp = bruto / (1 + ppnRate / 100);
-    }
-
+    let dpp = isInclusive ? bruto / (1 + ppnRate / 100) : bruto;
     const totalPayable = dpp + ppnAmount + otherAmount - pphAmount;
 
-    doc.fontSize(9).font(getFont()).fillColor("#444444");
-    doc.text("Subtotal", 350, currentY, { width: 120, align: "right" });
-    doc.fillColor("#000000").text(formatIDR(dpp), 485, currentY, { width: 70, align: "right" });
-    currentY += 18;
+    const totalX = 350;
+    const valX = 470;
 
-    if (ppnRate > 0) {
-      doc.fillColor("#444444").text(`PPN (${ppnRate}%)`, 350, currentY, { width: 120, align: "right" });
-      doc.fillColor("#000000").text(formatIDR(ppnAmount), 485, currentY, { width: 70, align: "right" });
+    const drawTotalRow = (label: string, value: string, isBold = false, color = "#000000") => {
+      doc.fillColor(secondaryColor).font(getFont(isBold)).text(label, totalX, currentY, { width: 110, align: "right" });
+      doc.fillColor(color).text(value, valX, currentY, { width: 75, align: "right" });
       currentY += 18;
-    }
+    };
 
-    if (otherRate > 0) {
-      doc.fillColor("#444444").text(`${invoice.taxOtherLabel || 'Lainnya'} (${otherRate}%)`, 350, currentY, { width: 120, align: "right" });
-      doc.fillColor("#000000").text(formatIDR(otherAmount), 485, currentY, { width: 70, align: "right" });
-      currentY += 18;
-    }
+    drawTotalRow("Subtotal", formatIDR(dpp));
+    if (ppnRate > 0) drawTotalRow(`PPN (${ppnRate}%)`, formatIDR(ppnAmount));
+    if (otherRate > 0) drawTotalRow(`${invoice.taxOtherLabel || 'Other'} (${otherRate}%)`, formatIDR(otherAmount));
+    if (pphRate > 0) drawTotalRow(`${invoice.taxPphType || 'PPh'} (${pphRate}%)`, `(${formatIDR(pphAmount)})`, false, "#ef4444");
 
-    if (pphRate > 0) {
-      doc.fillColor("#444444").text(`${invoice.taxPphType || 'Potongan PPh'} (${pphRate}%)`, 350, currentY, { width: 120, align: "right" });
-      doc.fillColor("#ef4444").text(`(${formatIDR(pphAmount)})`, 485, currentY, { width: 70, align: "right" });
-      currentY += 18;
-    }
+    currentY += 5;
+    doc.rect(totalX + 20, currentY, 175, 25).fill(brandColor);
+    doc.fillColor("#ffffff").font(getFont(true)).fontSize(11).text("TOTAL PAYABLE", totalX + 30, currentY + 7);
+    doc.text(formatIDR(totalPayable), valX, currentY + 7, { width: 75, align: "right" });
 
-    currentY += 7;
-    doc.strokeColor(brandColor).lineWidth(1).moveTo(350, currentY - 5).lineTo(555, currentY - 5).stroke();
-
-    doc.fontSize(11).font(getFont(true)).fillColor(brandColor);
-    doc.text("Total Bayar", 350, currentY, { width: 120, align: "right" });
-    doc.text(formatIDR(totalPayable), 485, currentY, { width: 70, align: "right" });
-
+    // --- 7. Bottom Section: Payment Info & Signature ---
     currentY += 60;
-    
-    // Payment Info & Signature area
-    const bottomAreaY = currentY;
-
-    // Payment Info (Left Side)
-    doc.fontSize(10).font(getFont(true)).fillColor(brandColor).text("INFORMASI PEMBAYARAN", 40, bottomAreaY);
-    let bankY = bottomAreaY + 20;
-    
-    if (invoice.bankAccounts && invoice.bankAccounts.length > 0) {
-      invoice.bankAccounts.forEach((bank) => {
-        doc.fontSize(9).font(getFont(true)).text(`${bank.label}`, 40, bankY);
-        doc.fontSize(9).font(getFont()).fillColor("#444444").text(`No. Rekening: ${bank.accountNumber}`, 40, bankY + 14);
-        doc.text(`A/N: ${bank.accountName}`, 40, bankY + 28);
-        bankY += 50;
-      });
-    } else {
-      doc.fontSize(9).font(getFont(true)).text("Bank Central Asia (BCA)", 40, bankY);
-      doc.fontSize(9).font(getFont()).fillColor("#444444").text("No. Rekening: 1234567890", 40, bankY + 14);
-      doc.text("A/N: PT SDC INDONESIA", 40, bankY + 28);
+    if (currentY > 650) {
+      doc.addPage();
+      currentY = 50;
     }
 
-    // Signature (Right Side)
-    const sigX = 380;
-    const sigWidth = 150;
+    const bottomY = currentY;
+    
+    // Payment Info
+    doc.fillColor(brandColor).fontSize(10).font(getFont(true)).text("PAYMENT INFORMATION", 50, bottomY);
+    let bankY = bottomY + 20;
+    const banks = (invoice.bankAccounts && invoice.bankAccounts.length > 0) ? invoice.bankAccounts : [{ label: "Bank Central Asia (BCA)", accountNumber: "1234567890", accountName: "PT SDC INDONESIA" }];
 
+    banks.forEach((bank) => {
+      doc.fillColor("#000000").fontSize(9).font(getFont(true)).text(bank.label, 50, bankY);
+      doc.fillColor(secondaryColor).font(getFont()).text(`Acc No: ${bank.accountNumber}`, 50, bankY + 12);
+      doc.text(`Name: ${bank.accountName}`, 50, bankY + 24);
+      bankY += 45;
+    });
+
+    // Signature
+    const sigX = 400;
     if (settings.signatureUrl) {
       try {
         const signaturePath = path.join(process.cwd(), "public", settings.signatureUrl.replace(/^\/+/g, ""));
         if (fs.existsSync(signaturePath)) {
-          doc.image(signaturePath, sigX + (sigWidth - 100) / 2, bottomAreaY, { width: 100 });
+          doc.image(signaturePath, sigX, bottomY + 10, { width: 100 });
         }
-      } catch (err) {
-        console.error("[PDF] Failed to load signature:", err);
-      }
+      } catch (err) {}
     }
 
-    const sigNameY = bottomAreaY + 95;
-    doc.fontSize(10).font(getFont(true)).fillColor("#000000").text(settings.signatureName || "", sigX, sigNameY, { width: sigWidth, align: "center" });
-    doc.fontSize(9).font(getFont()).fillColor("#444444").text(settings.signatureTitle || "", sigX, sigNameY + 15, { width: sigWidth, align: "center" });
+    doc.fillColor("#000000").font(getFont(true)).text("Authorized Signature", sigX, bottomY, { width: 100, align: "center" });
+    const sigNameY = bottomY + 85;
+    doc.font(getFont(true)).text(settings.signatureName || "", sigX, sigNameY, { width: 100, align: "center" });
+    doc.fillColor(secondaryColor).font(getFont()).fontSize(8).text(settings.signatureTitle || "", sigX, sigNameY + 12, { width: 100, align: "center" });
 
     doc.end();
   });
