@@ -10,7 +10,7 @@ export async function requireSystemAdmin() {
   const session = await getSession();
   if (!session) redirect("/login");
   
-  const ownerEmail = process.env.ADMIN_EMAIL || "admin@sdc.local";
+  const ownerEmail = process.env.ADMIN_EMAIL || "admin@solusidigitalcreative.com";
   if (session.user.email !== ownerEmail) {
     return null; // Return null instead of redirecting immediately to allow checking
   }

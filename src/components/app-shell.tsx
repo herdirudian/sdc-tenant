@@ -31,7 +31,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
   const user = session.user;
-  const ownerEmail = "admin@sdc.local"; // Consistent with saas-admin.ts
+  const ownerEmail = process.env.ADMIN_EMAIL || "admin@solusidigitalcreative.com";
   const items = navItems.filter((i) => {
     // Only show System Owner menu to the specific system admin email
     if (i.href === "/admin") {
