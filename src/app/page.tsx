@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { redirect } from "next/navigation";
 import { getDashboardData } from "@/actions/dashboard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +22,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const session = await getSession();
-  if (!session) return <LandingPage />;
+  if (!session) redirect("/login");
 
   const tenantInfo = await requireSubscription();
   const user = session.user;
