@@ -17,6 +17,7 @@ import { SimpleBarChart } from "@/components/dashboard-charts";
 import { SyncPaidInvoicesButton } from "@/components/sync-paid-invoices-button";
 import { LandingPage } from "@/components/landing-page";
 import { OnboardingBanner } from "@/components/onboarding-banner";
+import { SubscriptionBanner } from "@/components/subscription-banner";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,13 @@ export default async function Home() {
 
   return (
     <div className="space-y-8">
+      {subscription && (
+        <SubscriptionBanner 
+          status={subscription.status} 
+          expiresAt={subscription.expiresAt} 
+        />
+      )}
+
       {settings.announcementTitle && (
         <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 dark:bg-orange-950/20 dark:border-orange-900/50">
           <div className="flex items-start gap-3">
