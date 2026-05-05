@@ -1,5 +1,6 @@
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+const { PrismaMariaDb } = require("@prisma/adapter-mariadb");
 const { PrismaClient, UserRole } = require("@prisma/client");
 const { randomBytes, scryptSync } = require("node:crypto");
 
@@ -9,17 +10,37 @@ function createPasswordHash(password) {
   return `scrypt:${salt.toString("base64")}:${hash.toString("base64")}`;
 }
 
-async function main() {
-  const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) {
+function createAdapter() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
     console.error("Error: DATABASE_URL is not set in .env file");
-    console.log("Current directory:", process.cwd());
-    console.log("Env path attempted:", path.join(__dirname, "..", ".env"));
     process.exit(1);
   }
 
-  console.log("Database URL found, initializing Prisma...");
-  const prisma = new PrismaClient();
+  try {
+    const url = new URL(databaseUrl);
+    const database = url.pathname.replace(/^\/+/, "");
+
+    return new PrismaMariaDb({
+      host: url.hostname,
+      port: url.port ? Number(url.port) : 3306,
+      user: decodeURIComponent(url.username),
+      password: decodeURIComponent(url.password),
+      database,
+      connectionLimit: 1,
+    });
+  } catch (err) {
+    console.error("Error parsing DATABASE_URL:", err.message);
+    process.exit(1);
+  }
+}
+
+async function main() {
+  console.log("Initializing Prisma with MariaDB adapter...");
+  const prisma = new PrismaClient({
+    adapter: createAdapter(),
+  });
+
   try {
     const adminEmail = process.env.ADMIN_EMAIL ?? "admin@sdc.local";
     const adminPassword = process.env.ADMIN_PASSWORD ?? "change-me";
@@ -46,6 +67,9 @@ async function main() {
       });
       console.log("Default company settings created.");
     }
+  } catch (err) {
+    console.error("Seed error:", err);
+    process.exit(1);
   } finally {
     await prisma.$disconnect();
   }
@@ -53,5 +77,5 @@ async function main() {
 
 main().catch(async (err) => {
   console.error(err);
-  process.exitCode = 1;
+  process.exit(1);
 });
