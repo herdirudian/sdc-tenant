@@ -60,12 +60,17 @@ async function main() {
       console.log(`Admin user already exists: ${adminEmail}`);
     }
 
-    const settings = await prisma.companySettings.findUnique({ where: { id: "default" } });
-    if (!settings) {
-      await prisma.companySettings.create({
-        data: { id: "default", companyName: "PT Solusi Digital Creative" },
+    // Global Settings (SaaS config)
+    const globalSettings = await prisma.globalSettings.findFirst();
+    if (!globalSettings) {
+      await prisma.globalSettings.create({
+        data: {
+          maintenanceMode: false,
+          monthlyPrice: 50000,
+          trialDays: 7,
+        },
       });
-      console.log("Default company settings created.");
+      console.log("Global settings initialized.");
     }
   } catch (err) {
     console.error("Seed error:", err);
