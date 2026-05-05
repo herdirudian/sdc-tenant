@@ -98,24 +98,11 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", (err) => reject(err));
 
-    // Letterhead (Default)
-    const letterheadUrl = "/img/KopSurat.png";
-    try {
-      const letterheadPath = path.join(process.cwd(), "public", letterheadUrl.replace(/^\/+/g, ""));
-      if (fs.existsSync(letterheadPath)) {
-        doc.image(letterheadPath, 0, 0, { width: 595.28 }); // A4 width
-      }
-    } catch (err) {
-      console.error(`[PDF] Failed to load default letterhead:`, err);
-    }
-
-
-
     // Header - Invoice Title
     const brandColor = "#1e40af"; // Deep blue to match logo
 
     doc.fillColor("#000000");
-    doc.fontSize(20).font(getFont(true)).text("INVOICE", 40, 160, { align: "right" });
+    doc.fontSize(20).font(getFont(true)).text("INVOICE", 40, 60, { align: "right" });
     doc.fontSize(10).font(getFont()).text(invoice.invoiceNumber, { align: "right" });
     if (invoice.taxInvoiceNumber) {
       doc.fontSize(8).font(getFont(true)).fillColor(brandColor).text(`Faktur Pajak: ${invoice.taxInvoiceNumber}`, { align: "right" });
@@ -124,7 +111,7 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
       doc.fontSize(8).font(getFont()).fillColor("#666666").text(`PO: ${invoice.poReference}`, { align: "right" });
     }
     
-    doc.y = 230; // Set explicit Y for Bill From/To section
+    doc.y = 130; // Set explicit Y for Bill From/To section
 
     // Bill From & Bill To
     const billTop = doc.y;
