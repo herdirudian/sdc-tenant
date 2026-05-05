@@ -10,18 +10,16 @@ function createPasswordHash(password) {
 }
 
 async function main() {
-  if (!process.env.DATABASE_URL) {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
     console.error("Error: DATABASE_URL is not set in .env file");
+    console.log("Current directory:", process.cwd());
+    console.log("Env path attempted:", path.join(__dirname, "..", ".env"));
     process.exit(1);
   }
 
-  const prisma = new PrismaClient({
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL,
-      },
-    },
-  });
+  console.log("Database URL found, initializing Prisma...");
+  const prisma = new PrismaClient();
   try {
     const adminEmail = process.env.ADMIN_EMAIL ?? "admin@sdc.local";
     const adminPassword = process.env.ADMIN_PASSWORD ?? "change-me";
