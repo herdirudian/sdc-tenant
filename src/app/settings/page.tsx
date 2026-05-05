@@ -58,7 +58,7 @@ export default async function SettingsPage({
               : error === "smtp_save"
                 ? `Gagal menyimpan SMTP: ${msg ?? "unknown"}`
           : error === "invalid"
-            ? "Input tidak valid."
+            ? `Input tidak valid: ${msg ?? "Periksa kembali field yang wajib diisi."}`
             : null;
 
   return (
@@ -146,6 +146,17 @@ export default async function SettingsPage({
             <div className="grid gap-2">
               <Label htmlFor="address">Address</Label>
               <Textarea id="address" name="address" defaultValue={settings.address ?? ""} />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="logoUrl">Logo URL</Label>
+                <Input id="logoUrl" name="logoUrl" defaultValue={settings.logoUrl ?? ""} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="logoFile">Upload Logo</Label>
+                <Input id="logoFile" name="logoFile" type="file" accept="image/*" />
+              </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">

@@ -144,8 +144,11 @@ export async function updateCompanySettings(formData: FormData) {
   const parsed = companySchema.safeParse(rawData);
 
   if (!parsed.success) {
-    console.error("[Settings] Validation failed:", parsed.error.format());
-    redirect("/settings?error=invalid");
+    console.error("[Settings] Validation failed:", parsed.error.flatten().fieldErrors);
+    const errorMsg = Object.entries(parsed.error.flatten().fieldErrors)
+      .map(([field, errors]) => `${field}: ${errors?.join(", ")}`)
+      .join(" | ");
+    redirect(`/settings?error=invalid&msg=${encodeURIComponent(errorMsg)}`);
   }
 
   const maybeLogoFile = formData.get("logoFile");
