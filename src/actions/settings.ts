@@ -127,7 +127,7 @@ export async function updateCompanySettings(formData: FormData) {
   const { tenantId, user: actor } = await requireTenant();
   if (actor.role !== UserRole.ADMIN) redirect("/settings?error=forbidden");
 
-  const parsed = companySchema.safeParse({
+  const rawData = {
     companyName: formData.get("companyName"),
     npwp: formData.get("npwp"),
     address: formData.get("address"),
@@ -139,9 +139,14 @@ export async function updateCompanySettings(formData: FormData) {
     invoiceTerms: formData.get("invoiceTerms"),
     invoiceFooter: formData.get("invoiceFooter"),
     defaultDueDays: formData.get("defaultDueDays"),
-  });
+  };
 
-  if (!parsed.success) redirect("/settings?error=invalid");
+  const parsed = companySchema.safeParse(rawData);
+
+  if (!parsed.success) {
+    console.error("[Settings] Validation failed:", parsed.error.format());
+    redirect("/settings?error=invalid");
+  }
 
   const maybeLogoFile = formData.get("logoFile");
   const logoFile = maybeLogoFile instanceof File && maybeLogoFile.size > 0 ? maybeLogoFile : null;

@@ -150,12 +150,12 @@ export default async function SettingsPage({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="logoUrl">Logo URL</Label>
-                <Input id="logoUrl" name="logoUrl" defaultValue={settings.logoUrl ?? ""} />
+                <Label htmlFor="letterheadUrl">Cover URL (Kop Surat)</Label>
+                <Input id="letterheadUrl" name="letterheadUrl" defaultValue={settings.letterheadUrl ?? ""} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="logoFile">Upload Logo</Label>
-                <Input id="logoFile" name="logoFile" type="file" accept="image/*" />
+                <Label htmlFor="letterheadFile">Upload Cover</Label>
+                <Input id="letterheadFile" name="letterheadFile" type="file" accept="image/*" />
               </div>
             </div>
 
