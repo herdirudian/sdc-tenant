@@ -83,6 +83,16 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
     const secondaryColor = "#64748b";
     const accentColor = "#f8fafc";
 
+    // --- 0. Background Letterhead ---
+    if (settings.letterheadUrl) {
+      try {
+        const letterheadPath = path.join(process.cwd(), "public", settings.letterheadUrl.replace(/^\/+/g, ""));
+        if (fs.existsSync(letterheadPath)) {
+          doc.image(letterheadPath, 0, 0, { width: 595.28 }); // A4 width
+        }
+      } catch (err) {}
+    }
+
     // --- 1. Top Section: Logo & Company Info ---
     if (settings.logoUrl) {
       try {
