@@ -3,7 +3,7 @@
 import { enqueueInvoiceEmail, enqueueReceiptEmail, processEmailOutbox } from "@/lib/email-outbox";
 import { getRequestMeta, requireRole } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
-import { AuditAction, AuditEntityType, EmailMessageType, UserRole } from "@/generated/prisma/client";
+import { AuditAction, AuditEntityType, EmailMessageType, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";

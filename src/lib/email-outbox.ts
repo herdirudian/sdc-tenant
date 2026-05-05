@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { EmailMessageType, EmailOutboxStatus, InvoiceStatus, Prisma } from "@/generated/prisma/client";
+import { EmailMessageType, EmailOutboxStatus, InvoiceStatus, Prisma } from "@prisma/client";
 import { generateInvoicePdf } from "./invoice-pdf";
 import { generateReceiptPdf } from "./receipt-pdf";
 import fs from "fs/promises";

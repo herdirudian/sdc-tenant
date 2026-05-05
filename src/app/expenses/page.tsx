@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser, requireSubscription } from "@/lib/auth";
 import { formatDateID, formatIDR } from "@/lib/format";
-import { PaymentMethod, UserRole, Prisma } from "@/generated/prisma/client";
+import { PaymentMethod, UserRole, Prisma } from "@prisma/client";
 import { Plus, Filter, Trash2, ArrowLeft, Pencil, X, Paperclip } from "lucide-react";
 import { ExpenseForm } from "@/components/expenses/ExpenseForm";
 import { DeleteExpenseButton } from "@/components/expenses/DeleteExpenseButton";

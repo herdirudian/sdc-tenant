@@ -8,7 +8,7 @@ import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateID } from "@/lib/format";
-import { AuditAction, AuditEntityType, UserRole } from "@/generated/prisma/client";
+import { AuditAction, AuditEntityType, UserRole } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 

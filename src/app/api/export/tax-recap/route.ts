@@ -1,5 +1,5 @@
 import { requireRole } from "@/lib/auth";
-import { UserRole } from "@/generated/prisma/client";
+import { UserRole } from "@prisma/client";
 import { getTaxRecapReport } from "@/actions/report";
 
 export const dynamic = "force-dynamic";

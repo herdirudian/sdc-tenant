@@ -1,5 +1,5 @@
 import { requireRole, requireSubscription } from "@/lib/auth";
-import { UserRole } from "@/generated/prisma/client";
+import { UserRole } from "@prisma/client";
 import { FinancialReportsUI } from "@/components/reports/FinancialReportsUI";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";

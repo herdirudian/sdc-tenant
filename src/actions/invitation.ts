@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { createPasswordHash, createSession, setSessionCookie } from "@/lib/auth";
-import { UserRole } from "@/generated/prisma/client";
+import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 
 const acceptInviteSchema = z.object({

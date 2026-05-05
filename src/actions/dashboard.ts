@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { InvoiceStatus, Prisma } from "@/generated/prisma/client";
+import { InvoiceStatus, Prisma } from "@prisma/client";
 import { getDashboardNotifications } from "@/actions/collection";
 import { requireTenant } from "@/lib/auth";
 

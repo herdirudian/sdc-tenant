@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getRequestMeta, requireRole, requireUser } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
-import { AuditAction, AuditEntityType, UserRole, TaxMethod, Prisma } from "@/generated/prisma/client";
+import { AuditAction, AuditEntityType, UserRole, TaxMethod, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";

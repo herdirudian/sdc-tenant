@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
-import { LedgerEntryType, UserRole } from "@/generated/prisma/client";
+import { LedgerEntryType, UserRole } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 

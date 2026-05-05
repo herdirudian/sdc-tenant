@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ProjectStatus, UserRole } from "@/generated/prisma/client";
+import { ProjectStatus, UserRole } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 

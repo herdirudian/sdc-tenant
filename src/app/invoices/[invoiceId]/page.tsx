@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateID, formatIDR, formatWhatsAppPhone } from "@/lib/format";
 import { requireRole } from "@/lib/auth";
-import { InvoiceApprovalStatus, InvoiceStatus, InvoiceTemplate, PaymentMethod, UserRole, TaxMethod } from "@/generated/prisma/client";
+import { InvoiceApprovalStatus, InvoiceStatus, InvoiceTemplate, PaymentMethod, UserRole, TaxMethod } from "@prisma/client";
 import { AddPaymentForm } from "./add-payment-form";
 import { MessageCircle } from "lucide-react";
 import { ArrowUpRight, Receipt, Wallet, Landmark, Bell, TrendingUp, TrendingDown, CircleDollarSign, Briefcase, FileText } from "lucide-react";

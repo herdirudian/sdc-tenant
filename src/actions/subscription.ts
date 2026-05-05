@@ -4,7 +4,7 @@ import { requireTenant } from "@/lib/auth";
 import { createXenditInvoice } from "@/lib/xendit";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { SubscriptionStatus } from "@/generated/prisma/client";
+import { SubscriptionStatus } from "@prisma/client";
 import { getGlobalSettings } from "./saas-admin";
 
 export async function createSubscriptionInvoice() {

@@ -4,7 +4,7 @@ import { getPaymentById } from "@/actions/invoice";
 import { getCompanySettings } from "@/actions/settings";
 import { formatDateID, formatIDR } from "@/lib/format";
 import { requireRole } from "@/lib/auth";
-import { UserRole } from "@/generated/prisma/client";
+import { UserRole } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { PrintControls } from "@/components/print-controls";
 

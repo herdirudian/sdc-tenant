@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { setSessionCookie, createSession, getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { UserRole, SubscriptionStatus } from "@/generated/prisma/client";
+import { UserRole, SubscriptionStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 export async function requireSystemAdmin() {

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { SubscriptionStatus, PaymentStatus } from "@/generated/prisma/client";
+import { SubscriptionStatus, PaymentStatus } from "@prisma/client";
 
 export async function POST(req: Request) {
   const body = await req.json();

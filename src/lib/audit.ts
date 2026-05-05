@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { AuditAction, AuditEntityType } from "@/generated/prisma/client";
+import { AuditAction, AuditEntityType } from "@prisma/client";
 
 export async function writeAuditLog(input: {
   tenantId: string;

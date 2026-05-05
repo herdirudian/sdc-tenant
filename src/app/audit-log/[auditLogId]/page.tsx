@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateID } from "@/lib/format";
-import { UserRole } from "@/generated/prisma/client";
+import { UserRole } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 

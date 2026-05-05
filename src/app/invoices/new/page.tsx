@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { requireRole } from "@/lib/auth";
-import { InvoiceTemplate, InvoiceType, UserRole, TaxMethod } from "@/generated/prisma/client";
+import { InvoiceTemplate, InvoiceType, UserRole, TaxMethod } from "@prisma/client";
 import { InvoiceTaxSection } from "./invoice-tax-section";
 
 export const dynamic = "force-dynamic";

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { EmailMessageType, InvoiceStatus, SubscriptionStatus } from "@/generated/prisma/client";
+import { EmailMessageType, InvoiceStatus, SubscriptionStatus } from "@prisma/client";
 import { enqueueInvoiceEmail, enqueueSystemEmail, processEmailOutbox } from "./email-outbox";
 import { formatIDR } from "./format";
 

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users, Receipt, Briefcase, UserCircle, LogIn, Save } from "lucide-react";
 import Link from "next/link";
-import { SubscriptionStatus } from "@/generated/prisma/client";
+import { SubscriptionStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 

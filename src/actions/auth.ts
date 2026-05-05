@@ -11,7 +11,7 @@ import {
   clearSessionCookie,
 } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
-import { AuditAction, AuditEntityType, UserRole, SubscriptionStatus } from "@/generated/prisma/client";
+import { AuditAction, AuditEntityType, UserRole, SubscriptionStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";

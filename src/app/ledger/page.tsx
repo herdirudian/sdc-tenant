@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { requireUser, requireSubscription } from "@/lib/auth";
 import { formatDateID, formatIDR } from "@/lib/format";
-import { LedgerEntryType, PaymentMethod, UserRole } from "@/generated/prisma/client";
+import { LedgerEntryType, PaymentMethod, UserRole } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 

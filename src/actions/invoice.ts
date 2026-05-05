@@ -17,7 +17,7 @@ import {
   Prisma,
   TaxMethod,
   UserRole,
-} from "@/generated/prisma/client";
+} from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";

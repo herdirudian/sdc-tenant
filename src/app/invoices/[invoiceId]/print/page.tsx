@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateID, formatIDR } from "@/lib/format";
 import { getSession } from "@/lib/auth";
-import { InvoiceTemplate, InvoiceType, UserRole, TaxMethod } from "@/generated/prisma/client";
+import { InvoiceTemplate, InvoiceType, UserRole, TaxMethod } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 

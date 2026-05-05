@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
-import { LedgerEntryType, UserRole, Prisma, InvoiceStatus } from "@/generated/prisma/client";
+import { LedgerEntryType, UserRole, Prisma, InvoiceStatus } from "@prisma/client";
 
 export interface PnLData {
   period: string;
