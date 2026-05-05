@@ -383,10 +383,10 @@ export async function updateInvoicePresentation(formData: FormData) {
   });
 
   if (!settings) {
-    return { error: "Silakan lengkapi profil perusahaan di halaman Settings terlebih dahulu." };
+    redirect(`/invoices/${invoiceId}?error=profile_incomplete`);
   }
 
-  const pdfBuffer = await generateInvoicePdf(
+  await generateInvoicePdf(
     {
       invoiceNumber: invoice.invoiceNumber,
       taxInvoiceNumber: invoice.taxInvoiceNumber,
@@ -436,7 +436,8 @@ export async function updateInvoicePresentation(formData: FormData) {
     },
   );
 
-  return { success: true }; // Just to maintain function signature if needed
+  revalidatePath(`/invoices/${invoiceId}`);
+  redirect(`/invoices/${invoiceId}?success=presentation_updated`);
 }
 
 export async function approveInvoice(formData: FormData) {
