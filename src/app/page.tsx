@@ -59,7 +59,7 @@ export default async function Home() {
         </div>
       )}
 
-      <OnboardingBanner onboarding={data.onboarding} />
+      <OnboardingBanner onboarding={data.onboarding} guideUrl={settings.guideUrl} />
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

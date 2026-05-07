@@ -21,9 +21,10 @@ interface OnboardingBannerProps {
     totalSteps: number;
     isFinished: boolean;
   };
+  guideUrl?: string | null;
 }
 
-export function OnboardingBanner({ onboarding }: OnboardingBannerProps) {
+export function OnboardingBanner({ onboarding, guideUrl }: OnboardingBannerProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
 
@@ -66,15 +67,17 @@ export function OnboardingBanner({ onboarding }: OnboardingBannerProps) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <a
-              href="/docs/panduan-penggunaan.pdf"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-600 shadow-sm transition-all hover:bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/40"
-            >
-              <FileText className="h-3.5 w-3.5" />
-              Panduan PDF
-            </a>
+            {guideUrl && (
+              <a
+                href={guideUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden sm:flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-600 shadow-sm transition-all hover:bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/40"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Panduan PDF
+              </a>
+            )}
             <Button
               variant="ghost"
               size="icon"
