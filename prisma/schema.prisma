@@ -111,6 +111,7 @@ model CompanySettings {
   invoiceTerms   String?       @map("invoice_terms") @db.Text
   smtpFrom       String?       @map("smtp_from")
   smtpHost       String?       @map("smtp_host")
+  smtpPass       String?       @map("smtp_pass") @db.Text
   smtpPassEnc    String?       @map("smtp_pass_enc") @db.Text
   smtpPort       Int?          @map("smtp_port")
   smtpSecure     Boolean?      @map("smtp_secure")
