@@ -158,13 +158,15 @@ export default async function InvoicePrintPage({
       `}} />
       
       {/* Fixed Background for Print */}
-      <div className="bg-kop fixed top-0 left-0 w-[210mm] h-[297mm] pointer-events-none hidden print:block" style={{ zIndex: -1 }}>
-        <img
-          src="/img/KopSurat.png"
-          alt=""
-          className="w-full h-full object-fill"
-        />
-      </div>
+      {settings.letterheadUrl && (
+        <div className="bg-kop fixed top-0 left-0 w-[210mm] h-[297mm] pointer-events-none hidden print:block" style={{ zIndex: -1 }}>
+          <img
+            src={settings.letterheadUrl}
+            alt=""
+            className="w-full h-full object-fill"
+          />
+        </div>
+      )}
 
       <div className="flex items-center justify-between print:hidden w-full max-w-[210mm] mb-4 px-4 md:px-0">
         <Link href={`/invoices/${invoice.id}`} className="text-sm underline">
@@ -175,13 +177,15 @@ export default async function InvoicePrintPage({
 
       <div className="print-container relative w-full md:w-[210mm] min-h-[297mm] bg-white print:bg-transparent shadow-2xl print:shadow-none print:m-0 overflow-hidden print:overflow-visible">
         {/* Screen-only Background Layer */}
-        <div className="absolute inset-0 pointer-events-none print:hidden">
-          <img
-            src="/img/KopSurat.png"
-            alt=""
-            className="w-full h-full object-fill"
-          />
-        </div>
+        {settings.letterheadUrl && (
+          <div className="absolute inset-0 pointer-events-none print:hidden">
+            <img
+              src={settings.letterheadUrl}
+              alt=""
+              className="w-full h-full object-fill"
+            />
+          </div>
+        )}
 
         {/* Content Table for Print Spacing */}
         <table className="relative z-10 w-full border-collapse bg-transparent print:bg-transparent">
