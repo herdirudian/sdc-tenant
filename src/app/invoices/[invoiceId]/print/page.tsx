@@ -140,10 +140,10 @@ export default async function InvoicePrintPage({
             z-index: -1;
           }
           .print-header-space {
-            height: 45mm;
+            height: 10mm;
           }
           .print-footer-space {
-            height: 20mm;
+            height: 10mm;
           }
           .print-container {
             width: 100% !important;
@@ -190,7 +190,7 @@ export default async function InvoicePrintPage({
         {/* Content Table for Print Spacing */}
         <table className="relative z-10 w-full border-collapse bg-transparent print:bg-transparent">
           <thead>
-            <tr><td><div className="print-header-space h-[10mm] print:h-[45mm]" /></td></tr>
+            <tr><td><div className="print-header-space h-[10mm] print:h-[10mm]" /></td></tr>
           </thead>
           <tbody className="bg-transparent print:bg-transparent">
             <tr className="bg-transparent print:bg-transparent">
@@ -198,7 +198,7 @@ export default async function InvoicePrintPage({
                 <div className="px-[15mm] text-[12px] leading-normal bg-transparent print:bg-transparent">
                   
                   {/* Header: Logo & Company Info */}
-                  <div className="flex justify-between items-start mb-8">
+                  <div className="flex justify-between items-start mb-6">
                     <div>
                       {settings.logoUrl && (
                         <img src={settings.logoUrl} alt="Logo" className="h-16 w-auto object-contain mb-4" />
