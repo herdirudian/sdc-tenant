@@ -5,9 +5,18 @@ export async function POST(req: Request) {
   const body = await req.json();
   const xenditCallbackToken = req.headers.get("x-callback-token");
 
+  // Debug log untuk pengecekan di VPS
+  console.log("DEBUG: Xendit Callback Token received:", xenditCallbackToken);
+  console.log("DEBUG: Expected Token from ENV:", process.env.XENDIT_CALLBACK_TOKEN);
+
   // Verify callback token if you have one set in Xendit dashboard
-  if (process.env.XENDIT_CALLBACK_TOKEN && xenditCallbackToken !== process.env.XENDIT_CALLBACK_TOKEN) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (process.env.XENDIT_CALLBACK_TOKEN) {
+    if (xenditCallbackToken !== process.env.XENDIT_CALLBACK_TOKEN) {
+      console.error("Xendit Webhook Unauthorized: Token mismatch");
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  } else {
+    console.warn("WARNING: XENDIT_CALLBACK_TOKEN is not set in .env. Webhook is unverified.");
   }
 
   const { external_id, status, amount, payment_method, paid_at } = body;
