@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { UserRole, SubscriptionStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
+import { encryptSecret } from "@/lib/secret";
+
 export async function requireSystemAdmin() {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -170,6 +172,42 @@ export async function updateGlobalSettings(formData: FormData) {
 
   revalidatePath("/admin");
   revalidatePath("/");
+}
+
+export async function updateOwnerSmtpSettings(formData: FormData) {
+  const user = await requireSystemAdmin();
+  if (!user) redirect("/?error=unauthorized_saas_admin");
+
+  const smtpHost = formData.get("smtpHost") as string;
+  const smtpPort = parseInt(formData.get("smtpPort") as string);
+  const smtpSecure = formData.get("smtpSecure") === "on";
+  const smtpUser = formData.get("smtpUser") as string;
+  const smtpPass = formData.get("smtpPass") as string;
+  const smtpFrom = formData.get("smtpFrom") as string;
+
+  let smtpPassEnc: string | null = null;
+  if (smtpPass) {
+    smtpPassEnc = encryptSecret(smtpPass);
+  }
+
+  const updateData: any = {
+    smtpHost: smtpHost || null,
+    smtpPort: isNaN(smtpPort) ? null : smtpPort,
+    smtpSecure,
+    smtpUser: smtpUser || null,
+    smtpFrom: smtpFrom || null,
+  };
+
+  if (smtpPassEnc) {
+    updateData.smtpPassEnc = smtpPassEnc;
+  }
+
+  await prisma.globalSettings.update({
+    where: { id: "system" },
+    data: updateData
+  });
+
+  revalidatePath("/admin");
 }
 
 export async function getGlobalAuditLogs(params: { q?: string; page?: number }) {

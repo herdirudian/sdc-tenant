@@ -83,6 +83,14 @@ model GlobalSettings {
   trialDays         Int      @default(3) @map("trial_days")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
+  // SMTP Settings for Owner/System
+  smtpHost          String?  @map("smtp_host")
+  smtpPort          Int?     @map("smtp_port")
+  smtpSecure        Boolean? @map("smtp_secure")
+  smtpUser          String?  @map("smtp_user")
+  smtpPassEnc       String?  @map("smtp_pass_enc") @db.Text
+  smtpFrom          String?  @map("smtp_from")
+
   @@map("global_settings")
 }
 

@@ -1,9 +1,9 @@
-import { getAdminStats, getTenantsList, getRevenueStats, getGlobalSettings, updateGlobalSettings, getGlobalAuditLogs, getDatabaseHealth } from "@/actions/saas-admin";
+import { getAdminStats, getTenantsList, getRevenueStats, getGlobalSettings, updateGlobalSettings, updateOwnerSmtpSettings, getGlobalAuditLogs, getDatabaseHealth } from "@/actions/saas-admin";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateID, formatIDR } from "@/lib/format";
-import { Users, Building2, CreditCard, Clock, Search, Eye, DollarSign, ArrowUpRight, History, Settings, Megaphone, ShieldAlert, ShieldCheck, Database, Server, Cpu } from "lucide-react";
+import { Users, Building2, CreditCard, Clock, Search, Eye, DollarSign, ArrowUpRight, History, Settings, Megaphone, ShieldAlert, ShieldCheck, Database, Server, Cpu, Mail } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -408,6 +408,53 @@ export default async function AdminDashboardPage({
                 </CardContent>
                 <CardFooter className="bg-muted/30 pt-4">
                   <Button type="submit">Siarkan Pengumuman</Button>
+                </CardFooter>
+              </form>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-blue-500" />
+                  <CardTitle>Pengaturan SMTP System (Owner)</CardTitle>
+                </div>
+                <CardDescription>Digunakan untuk mengirim email sistem (Notifikasi Pendaftaran, Trial, Langganan Expired).</CardDescription>
+              </CardHeader>
+              <form action={updateOwnerSmtpSettings}>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="smtpHost">SMTP Host</Label>
+                      <Input id="smtpHost" name="smtpHost" placeholder="smtp.gmail.com" defaultValue={(settings as any).smtpHost || ""} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="smtpPort">SMTP Port</Label>
+                      <Input id="smtpPort" name="smtpPort" type="number" placeholder="465" defaultValue={(settings as any).smtpPort?.toString() || ""} />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="smtpUser">SMTP User</Label>
+                      <Input id="smtpUser" name="smtpUser" placeholder="admin@domain.com" defaultValue={(settings as any).smtpUser || ""} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="smtpPass">SMTP Password</Label>
+                      <Input id="smtpPass" name="smtpPass" type="password" placeholder="••••••••" />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="smtpFrom">Sender Email (From)</Label>
+                      <Input id="smtpFrom" name="smtpFrom" placeholder="Solusi Invoice <no-reply@domain.com>" defaultValue={(settings as any).smtpFrom || ""} />
+                    </div>
+                    <div className="flex items-center space-x-2 pt-8">
+                      <Checkbox id="smtpSecure" name="smtpSecure" defaultChecked={(settings as any).smtpSecure} />
+                      <Label htmlFor="smtpSecure">Use SSL/TLS (Secure)</Label>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="bg-muted/30 pt-4">
+                  <Button type="submit">Simpan Pengaturan SMTP</Button>
                 </CardFooter>
               </form>
             </Card>
