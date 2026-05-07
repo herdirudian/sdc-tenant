@@ -10,9 +10,16 @@ export class AppEncryptionKeyError extends Error {
 function getKey() {
   const raw = process.env.APP_ENCRYPTION_KEY;
   if (!raw) throw new AppEncryptionKeyError("Missing env: APP_ENCRYPTION_KEY");
-  const key = Buffer.from(raw, "base64");
-  if (key.length !== 32)
-    throw new AppEncryptionKeyError("APP_ENCRYPTION_KEY must be base64 of 32 bytes");
+  
+  // Try to parse as base64 first
+  let key = Buffer.from(raw, "base64");
+  
+  // If not valid base64 or wrong length, fallback to raw string hashing
+  if (key.length !== 32) {
+    const { createHash } = require("node:crypto");
+    key = createHash("sha256").update(raw).digest();
+  }
+  
   return key;
 }
 
