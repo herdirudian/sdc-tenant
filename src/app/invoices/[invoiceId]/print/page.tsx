@@ -31,10 +31,18 @@ export default async function InvoicePrintPage(props: {
   if (!settings) return notFound();
 
   const banks = (settings.bankAccounts || []).filter((b) => b.isActive);
-  const selectedBanks =
-    (invoice.bankAccounts && invoice.bankAccounts.length > 0)
-      ? invoice.bankAccounts.map((x) => x.bankAccount)
-      : banks;
+  
+  // Mapping bank yang aman dari null reference
+  const rawBanks = (invoice.bankAccounts && invoice.bankAccounts.length > 0)
+    ? invoice.bankAccounts.map((x) => x.bankAccount).filter(Boolean)
+    : banks;
+
+  const displayBanks = rawBanks.map(bank => ({
+     label: bank?.label || "Bank",
+     accountNumber: bank?.accountNumber || "-",
+     accountName: bank?.accountName || "-"
+   }));
+
   const termsText = invoice.terms ?? settings.invoiceTerms ?? null;
   const footerText = invoice.footer ?? settings.invoiceFooter ?? null;
 
@@ -47,12 +55,12 @@ export default async function InvoicePrintPage(props: {
 
   let dpp = amountBruto;
   if (isInclusive) {
-    dpp = amountBruto / (1 + ppnRate / 100);
+    dpp = amountBruto / (1 + (ppnRate || 0) / 100);
   }
 
-  const ppnAmount = dpp * (ppnRate / 100);
-  const pphAmount = dpp * (pphRate / 100);
-  const otherAmount = dpp * (otherRate / 100);
+  const ppnAmount = dpp * ((ppnRate || 0) / 100);
+  const pphAmount = dpp * ((pphRate || 0) / 100);
+  const otherAmount = dpp * ((otherRate || 0) / 100);
 
   const totalTagihan = dpp + ppnAmount + otherAmount - pphAmount;
 
@@ -60,14 +68,6 @@ export default async function InvoicePrintPage(props: {
   const primaryColor = "text-blue-700";
   const borderColor = "border-slate-200";
   const headerBg = "bg-slate-50";
-
-  // Re-fetch bank account details to ensure we have label, accountName, and accountNumber
-  // The map above might only have IDs if getInvoiceById doesn't include the full object
-  const displayBanks = selectedBanks.map(bank => ({
-    label: bank.label || "Bank",
-    accountNumber: bank.accountNumber || "-",
-    accountName: bank.accountName || "-"
-  }));
 
   return (
     <div className="min-h-screen bg-muted/30 print:bg-transparent flex flex-col items-center p-0 md:p-8 print:p-0 portal-light-theme">
