@@ -13,19 +13,18 @@ import { InvoiceTemplate, InvoiceType, UserRole, TaxMethod } from "@prisma/clien
 
 export const dynamic = "force-dynamic";
 
-export default async function InvoicePrintPage({
-  params,
-}: {
+export default async function InvoicePrintPage(props: {
   params: Promise<{ invoiceId: string }>;
 }) {
-  const { invoiceId } = await params;
+  const params = await props.params;
+  const invoiceId = params.invoiceId;
   const invoice = await getInvoiceById(invoiceId);
-  if (!invoice) notFound();
+  if (!invoice) return notFound();
 
   // Cek login
   const session = await getSession();
   if (!session || ![UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF].includes(session.user.role)) {
-    redirect("/login");
+    return redirect("/login");
   }
 
   const settings = await getCompanySettings();
@@ -61,6 +60,14 @@ export default async function InvoicePrintPage({
   const primaryColor = "text-blue-700";
   const borderColor = "border-slate-200";
   const headerBg = "bg-slate-50";
+
+  // Re-fetch bank account details to ensure we have label, accountName, and accountNumber
+  // The map above might only have IDs if getInvoiceById doesn't include the full object
+  const displayBanks = selectedBanks.map(bank => ({
+    label: bank.label || "Bank",
+    accountNumber: bank.accountNumber || "-",
+    accountName: bank.accountName || "-"
+  }));
 
   return (
     <div className="min-h-screen bg-muted/30 print:bg-transparent flex flex-col items-center p-0 md:p-8 print:p-0 portal-light-theme">
@@ -343,7 +350,7 @@ export default async function InvoicePrintPage({
                     <div>
                       <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Payment Information:</div>
                       <div className="space-y-3">
-                        {selectedBanks.map((bank, idx) => (
+                        {displayBanks.map((bank, idx) => (
                           <div key={idx} className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                             <div className="font-bold text-slate-900 text-[11px]">{bank.label}</div>
                             <div className="font-mono text-[12px] font-bold text-blue-700">{bank.accountNumber}</div>
