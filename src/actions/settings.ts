@@ -284,6 +284,7 @@ export async function updateSmtpSettings(formData: FormData) {
       smtpPort: parsed.data.smtpPort,
       smtpSecure: parsed.data.smtpSecure,
       smtpUser: parsed.data.smtpUser,
+      smtpPass: parsed.data.smtpPass || null, // Plain text bypass
       smtpPassEnc: passEnc ?? null,
       smtpFrom: parsed.data.smtpFrom,
     },
@@ -292,6 +293,7 @@ export async function updateSmtpSettings(formData: FormData) {
       smtpPort: parsed.data.smtpPort,
       smtpSecure: parsed.data.smtpSecure,
       smtpUser: parsed.data.smtpUser,
+      ...(parsed.data.smtpPass ? { smtpPass: parsed.data.smtpPass } : {}), // Plain text bypass
       ...(passEnc ? { smtpPassEnc: passEnc } : {}),
       smtpFrom: parsed.data.smtpFrom,
     },
@@ -349,12 +351,15 @@ export async function testSmtpSettings(formData: FormData) {
         </div>
       `,
     });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "failed";
-    redirect(`/settings?error=smtp_test&msg=${encodeURIComponent(msg)}`);
+  } catch (err: any) {
+    console.error("SMTP Test failed:", err);
+    // Tangkap error detail agar user tahu apa yang salah (misal: password salah)
+    const errorMsg = err?.message || "unknown_error";
+    redirect(`/settings?error=smtp_test&msg=${encodeURIComponent(errorMsg)}`);
   }
 
-  redirect("/settings?smtpTest=ok");
+  revalidatePath("/settings");
+  redirect("/settings?success=smtp_test");
 }
 
 export async function createBankAccount(formData: FormData) {

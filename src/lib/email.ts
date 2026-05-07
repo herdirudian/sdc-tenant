@@ -23,7 +23,7 @@ function env(name: string): string {
 async function getSmtpConfig(tenantId?: string) {
   console.log("DEBUG: Getting SMTP config for tenant:", tenantId || "SYSTEM/OWNER");
 
-  // 1. Try to get Tenant's SMTP settings if tenantId is provided
+  // 1. Jika ada tenantId, HARUS pakai SMTP Tenant (Tidak boleh fallback ke Owner)
   if (tenantId) {
     const settings = await prisma.companySettings.findFirst({
       where: { tenantId },
@@ -40,9 +40,14 @@ async function getSmtpConfig(tenantId?: string) {
         from: settings.smtpFrom || settings.smtpUser,
       };
     }
+
+    // Jika tenantId ada tapi setting tidak lengkap, lempar error (jangan lanjut ke owner)
+    throw new Error(
+      "SMTP Client belum dikonfigurasi. Silakan atur SMTP di menu Pengaturan sebelum mengirim email."
+    );
   }
 
-  // 2. Try to get Owner's Global SMTP settings
+  // 2. Jika TIDAK ada tenantId, berarti ini email sistem (Welcome, Trial, Expiry), pakai SMTP Owner
   const globalSettings = await prisma.globalSettings.findUnique({
     where: { id: "system" },
   });
@@ -59,7 +64,7 @@ async function getSmtpConfig(tenantId?: string) {
     };
   }
 
-  // 3. Final Fallback to Environment Variables
+  // 3. Final Fallback to Environment Variables (Hanya untuk internal sistem)
   const envHost = process.env.SMTP_HOST;
   if (envHost) {
     console.log("DEBUG: Using SMTP settings from .env");
@@ -73,7 +78,7 @@ async function getSmtpConfig(tenantId?: string) {
     };
   }
 
-  throw new Error("SMTP belum dikonfigurasi. Silakan atur di System Owner > Kendali Sistem.");
+  throw new Error("SMTP System Owner belum dikonfigurasi. Silakan atur di System Owner > Kendali Sistem.");
 }
 
 export async function sendEmail(input: SendEmailInput & { tenantId?: string }) {

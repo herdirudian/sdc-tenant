@@ -539,8 +539,18 @@ export async function processEmailOutbox(input: { limit?: number; workerId?: str
         }
       }
 
+      // Tentukan apakah ini email sistem (dikirim oleh owner) atau email bisnis (dikirim oleh tenant)
+      const isSystemMessage = [
+        EmailMessageType.SUBSCRIPTION_EXPIRING_SOON,
+        EmailMessageType.WEEKLY_REVENUE_REPORT,
+      ].includes(job.type);
+
+      // Jika ini internal notification (tidak ada invoiceId tapi ada tenantId), biasanya dikirim oleh sistem ke admin tenant
+      const isInternalNotification = !job.invoiceId && !!job.tenantId;
+
       const result = await sendEmail({ 
-        tenantId: job.tenantId,
+        // Jika email sistem/internal, jangan sertakan tenantId agar getSmtpConfig pakai SMTP Owner
+        tenantId: (isSystemMessage || isInternalNotification) ? undefined : job.tenantId,
         to: job.toEmail, 
         subject: job.subject, 
         html: job.html,
