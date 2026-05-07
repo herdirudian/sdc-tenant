@@ -39,6 +39,9 @@ interface InvoiceData {
     accountNumber: string;
     label: string;
   }>;
+  project?: {
+    name: string;
+  } | null;
 }
 
 interface CompanySettings {
@@ -94,7 +97,6 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
     }
 
     // --- 1. Top Section: Logo & Company Info ---
-    // Only show manual header if NOT using letterhead
     if (!settings.letterheadUrl) {
       if (settings.logoUrl) {
         try {
@@ -111,15 +113,12 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
     }
 
     // --- 2. Invoice Meta Section ---
-    const metaY = settings.letterheadUrl ? 130 : 130;
-    
-    // Horizontal Line across the top of Invoice title
+    const metaY = 130;
     doc.strokeColor("#000000").lineWidth(2).moveTo(50, metaY).lineTo(545, metaY).stroke();
 
     doc.fillColor("#0f172a").fontSize(28).font(getFont(true)).text("INVOICE", 50, metaY + 15);
     doc.fillColor(secondaryColor).fontSize(10).font(getFont()).text(invoice.invoiceNumber, 50, metaY + 45);
     
-    // Right side meta data
     const metaX = 380;
     const drawMetaRow = (label: string, value: string, color = "#0f172a") => {
       doc.fillColor(secondaryColor).fontSize(9).font(getFont(true)).text(label.toUpperCase(), metaX, doc.y, { width: 80 });
@@ -141,7 +140,6 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
     doc.fillColor(secondaryColor).fontSize(10).font(getFont()).text(invoice.client.address || "", 50, doc.y + 2, { width: 250 });
     doc.text(`NPWP: ${invoice.client.npwp || "-"}`, 50, doc.y + 2);
 
-    // Project Info Box on the right
     const projectX = 350;
     doc.rect(projectX, billingY, 195, 60).fill(accentColor).stroke("#e2e8f0");
     doc.fillColor(secondaryColor).fontSize(8).font(getFont(true)).text("PROJECT / REFERENCE:", projectX + 10, billingY + 10);
@@ -172,7 +170,6 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
       const descHeight = doc.heightOfString(item.description, { width: 270 });
       const rowHeight = Math.max(35, descHeight + 20);
 
-      // Zebra striping
       if (index % 2 === 1) {
         doc.rect(50, currentY, 495, rowHeight).fill(accentColor);
       }
@@ -233,7 +230,6 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
 
     const bottomY = currentY;
     
-    // Payment Info
     doc.fillColor(secondaryColor).fontSize(9).font(getFont(true)).text("PAYMENT INFORMATION:", 50, bottomY);
     let bankY = bottomY + 20;
     const banks = (invoice.bankAccounts && invoice.bankAccounts.length > 0) ? invoice.bankAccounts : [];
@@ -246,7 +242,6 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
       bankY += 45;
     });
 
-    // Signature
     const sigX = 380;
     doc.fillColor(secondaryColor).fontSize(9).font(getFont(true)).text("AUTHORIZED SIGNATURE", sigX, bottomY, { width: 150, align: "center" });
     
@@ -265,7 +260,5 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
     doc.fillColor(secondaryColor).font(getFont()).fontSize(9).text(settings.signatureTitle || "Manager", sigX, sigNameY + 18, { width: 150, align: "center" });
 
     doc.end();
-  });
-}
   });
 }
