@@ -56,9 +56,9 @@ export default async function InvoicePrintPage({
   const totalTagihan = dpp + ppnAmount + otherAmount - pphAmount;
 
   const isModern = invoice.template === InvoiceTemplate.MODERN;
-  const primaryColor = isModern ? "text-blue-700" : "text-black";
-  const borderColor = isModern ? "border-blue-200" : "border-black";
-  const headerBg = isModern ? "bg-blue-50/50" : "bg-transparent";
+  const primaryColor = "text-blue-700";
+  const borderColor = "border-slate-200";
+  const headerBg = "bg-slate-50";
 
   return (
     <div className="min-h-screen bg-muted/30 print:bg-transparent flex flex-col items-center p-0 md:p-8 print:p-0 portal-light-theme">
@@ -72,7 +72,7 @@ export default async function InvoicePrintPage({
           --muted-foreground: 215.4 16.3% 46.9%;
           --border: 214.3 31.8% 91.4%;
           background-color: white;
-          color: #0f172a !important;
+          color: #1e293b !important;
         }
         @media print {
           .portal-light-theme {
@@ -140,10 +140,10 @@ export default async function InvoicePrintPage({
             z-index: -1;
           }
           .print-header-space {
-            height: 42mm;
+            height: 45mm;
           }
           .print-footer-space {
-            height: 40mm;
+            height: 20mm;
           }
           .print-container {
             width: 100% !important;
@@ -190,193 +190,184 @@ export default async function InvoicePrintPage({
         {/* Content Table for Print Spacing */}
         <table className="relative z-10 w-full border-collapse bg-transparent print:bg-transparent">
           <thead>
-            <tr><td><div className="print-header-space h-[42mm] print:h-[42mm]" /></td></tr>
+            <tr><td><div className="print-header-space h-[10mm] print:h-[45mm]" /></td></tr>
           </thead>
           <tbody className="bg-transparent print:bg-transparent">
             <tr className="bg-transparent print:bg-transparent">
               <td className="bg-transparent print:bg-transparent">
-                <div className="px-[12mm] text-[11px] leading-snug bg-transparent print:bg-transparent">
-                  <div className="flex justify-between items-start mb-4">
+                <div className="px-[15mm] text-[12px] leading-normal bg-transparent print:bg-transparent">
+                  
+                  {/* Header: Logo & Company Info */}
+                  <div className="flex justify-between items-start mb-8 print:hidden">
                     <div>
-                      <h1 className={`text-2xl font-bold uppercase tracking-tighter leading-none mb-1 ${primaryColor}`}>Invoice</h1>
-                      <div className="font-mono text-[11px]">{invoice.invoiceNumber}</div>
+                      {settings.logoUrl && (
+                        <img src={settings.logoUrl} alt="Logo" className="h-16 w-auto object-contain mb-4" />
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-lg text-slate-900 uppercase tracking-tight">{settings.companyName}</div>
+                      <div className="text-[11px] text-slate-500 max-w-[300px] leading-tight mt-1">{settings.address}</div>
+                      <div className="text-[11px] font-semibold mt-1">NPWP: {settings.npwp || "-"}</div>
+                    </div>
+                  </div>
+
+                  {/* Invoice Title & Meta */}
+                  <div className="flex justify-between items-end mb-10 border-b-2 border-slate-900 pb-4">
+                    <div>
+                      <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tighter leading-none">Invoice</h1>
+                      <div className="font-mono text-sm mt-2 text-slate-600 font-bold">{invoice.invoiceNumber}</div>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <div className="flex justify-end gap-4 text-[11px]">
+                        <span className="text-slate-400 font-bold uppercase tracking-widest">Issue Date</span>
+                        <span className="font-bold text-slate-900">{formatDateID(invoice.createdAt)}</span>
+                      </div>
+                      <div className="flex justify-end gap-4 text-[11px]">
+                        <span className="text-slate-400 font-bold uppercase tracking-widest">Due Date</span>
+                        <span className="font-bold text-red-600">{formatDateID(invoice.dueDate)}</span>
+                      </div>
                       {invoice.taxInvoiceNumber && (
-                        <div className="text-[10px] text-blue-700 font-semibold">Faktur Pajak: {invoice.taxInvoiceNumber}</div>
+                        <div className="flex justify-end gap-4 text-[11px]">
+                          <span className="text-slate-400 font-bold uppercase tracking-widest">Faktur Pajak</span>
+                          <span className="font-bold text-blue-700">{invoice.taxInvoiceNumber}</span>
+                        </div>
                       )}
+                    </div>
+                  </div>
+
+                  {/* Billing Info */}
+                  <div className="grid grid-cols-2 gap-12 mb-10">
+                    <div>
+                      <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Bill To:</div>
+                      <div className="font-bold text-base text-slate-900">{invoice.client.companyName ?? invoice.client.name}</div>
+                      <div className="text-[11px] text-slate-500 whitespace-pre-wrap leading-relaxed mt-1">{invoice.client.address}</div>
+                      <div className="text-[11px] font-semibold mt-1">NPWP: {invoice.client.npwp || "-"}</div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                      <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Project / Reference:</div>
+                      <div className="font-bold text-slate-900">{invoice.project?.name ?? "Layanan Jasa"}</div>
                       {invoice.poReference && (
-                        <div className="text-[10px] text-muted-foreground">PO: {invoice.poReference}</div>
+                        <div className="text-[11px] mt-1 text-slate-600 font-medium">PO Ref: {invoice.poReference}</div>
                       )}
+                      <div className="text-[11px] mt-1 text-slate-600 font-medium">Type: {invoice.type}</div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-6 mb-6">
-                    <div>
-                      <div className={`font-bold text-[9px] uppercase text-muted-foreground border-b mb-1 ${isModern ? "border-blue-100" : ""}`}>Bill From</div>
-                      <div className="font-bold text-[12px]">{settings.companyName}</div>
-                      <div className="text-[11px] text-muted-foreground whitespace-pre-wrap leading-tight">{settings.address}</div>
-                      <div className="text-[11px]">NPWP: {settings.npwp}</div>
-                    </div>
-                    <div>
-                      <div className={`font-bold text-[9px] uppercase text-muted-foreground border-b mb-1 ${isModern ? "border-blue-100" : ""}`}>Bill To</div>
-                      <div className="font-bold text-[12px]">{invoice.client.companyName ?? invoice.client.name}</div>
-                      <div className="text-[11px] text-muted-foreground whitespace-pre-wrap leading-tight">{invoice.client.address}</div>
-                      <div className="text-[11px]">NPWP: {invoice.client.npwp}</div>
-                    </div>
-                  </div>
-
-                  <div className={`grid grid-cols-3 gap-3 mb-6 p-3 rounded text-[10px] ${isModern ? "bg-blue-50/50" : "bg-muted/20"}`}>
-                    <div>
-                      <div className="uppercase text-muted-foreground mb-0.5 font-bold">Issue Date</div>
-                      <div className="font-semibold">{formatDateID(invoice.createdAt)}</div>
-                    </div>
-                    <div>
-                      <div className="uppercase text-muted-foreground mb-0.5 font-bold">Due Date</div>
-                      <div className="font-semibold text-destructive">{formatDateID(invoice.dueDate)}</div>
-                    </div>
-                    <div>
-                      <div className="uppercase text-muted-foreground mb-0.5 font-bold">Type</div>
-                      <div className="font-semibold">{invoice.type}</div>
-                    </div>
-                  </div>
-
-                  <div className="mb-6">
+                  {/* Table Items */}
+                  <div className="mb-8">
                     <Table>
                       <TableHeader>
-                        <TableRow className={`hover:bg-transparent border-b-2 ${borderColor} ${headerBg}`}>
-                          <TableHead className={`h-8 text-[10px] font-bold uppercase p-1 ${isModern ? "text-blue-800" : "text-black"}`}>Description</TableHead>
-                          <TableHead className={`h-8 text-right text-[10px] font-bold uppercase p-1 w-16 ${isModern ? "text-blue-800" : "text-black"}`}>Qty</TableHead>
-                          <TableHead className={`h-8 text-right text-[10px] font-bold uppercase p-1 w-24 ${isModern ? "text-blue-800" : "text-black"}`}>Price</TableHead>
-                          <TableHead className={`h-8 text-right text-[10px] font-bold uppercase p-1 w-28 ${isModern ? "text-blue-800" : "text-black"}`}>Amount</TableHead>
+                        <TableRow className="hover:bg-transparent border-b-2 border-slate-900">
+                          <TableHead className="h-10 text-[11px] font-black uppercase text-slate-900 p-2">Description</TableHead>
+                          <TableHead className="h-10 text-center text-[11px] font-black uppercase text-slate-900 p-2 w-20">Qty</TableHead>
+                          <TableHead className="h-10 text-right text-[11px] font-black uppercase text-slate-900 p-2 w-32">Price</TableHead>
+                          <TableHead className="h-10 text-right text-[11px] font-black uppercase text-slate-900 p-2 w-32">Total</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {invoice.items && invoice.items.length > 0 ? (
-                          invoice.items.map((item) => (
-                            <TableRow key={item.id} className={`hover:bg-transparent border-b ${isModern ? "border-blue-50" : ""}`}>
-                              <TableCell className="p-1 py-3">
-                                <div className="font-bold text-[12px] leading-tight">{item.description}</div>
+                          invoice.items.map((item, idx) => (
+                            <TableRow key={idx} className="hover:bg-transparent border-b border-slate-100">
+                              <TableCell className="p-3 align-top">
+                                <div className="font-bold text-slate-900">{item.description}</div>
                               </TableCell>
-                              <TableCell className="text-right p-1 py-3 text-[11px]">
-                                {item.quantity.toString()}
-                              </TableCell>
-                              <TableCell className="text-right p-1 py-3 text-[11px]">
-                                {formatIDR(item.price.toString())}
-                              </TableCell>
-                              <TableCell className={`text-right p-1 py-3 font-semibold text-[12px] ${isModern ? "text-blue-900" : ""}`}>
-                                {formatIDR(item.amount.toString())}
-                              </TableCell>
+                              <TableCell className="p-3 text-center align-top font-medium">{item.quantity}</TableCell>
+                              <TableCell className="p-3 text-right align-top font-medium">{formatIDR(item.price.toString())}</TableCell>
+                              <TableCell className="p-3 text-right align-top font-bold text-slate-900">{formatIDR(item.amount.toString())}</TableCell>
                             </TableRow>
                           ))
                         ) : (
-                          <TableRow className={`hover:bg-transparent border-b ${isModern ? "border-blue-50" : ""}`}>
-                            <TableCell className="p-1 py-3">
-                              <div className="font-bold text-[12px] leading-tight">{invoice.project?.name ?? "Project Services"}</div>
-                              <div className="text-[9px] text-muted-foreground italic leading-none">{invoice.type}</div>
-                            </TableCell>
-                            <TableCell className="text-right p-1 py-3 text-[11px]">1</TableCell>
-                            <TableCell className="text-right p-1 py-3 text-[11px]">{formatIDR(dpp)}</TableCell>
-                            <TableCell className="text-right p-1 py-3 font-semibold text-[12px]">{formatIDR(dpp)}</TableCell>
+                          <TableRow className="hover:bg-transparent border-b border-slate-100">
+                            <TableCell className="p-3 align-top font-bold text-slate-900">{invoice.type}</TableCell>
+                            <TableCell className="p-3 text-center align-top font-medium">1</TableCell>
+                            <TableCell className="p-3 text-right align-top font-medium">{formatIDR(amountBruto.toString())}</TableCell>
+                            <TableCell className="p-3 text-right align-top font-bold text-slate-900">{formatIDR(amountBruto.toString())}</TableCell>
                           </TableRow>
                         )}
-                        
-                        {(() => {
-                          const rows = [];
-                          
-                          // Subtotal Row
-                          rows.push(
-                            <TableRow key="subtotal" className="border-t-2 border-black/5">
-                              <TableCell colSpan={3} className="p-1 py-1.5 text-right font-medium text-[12px]">Subtotal</TableCell>
-                              <TableCell className="text-right p-1 py-1.5 font-bold text-[12px]">{formatIDR(dpp)}</TableCell>
-                            </TableRow>
-                          );
-
-                          // PPN Row
-                          if (ppnRate > 0) {
-                            rows.push(
-                              <TableRow key="ppn" className="border-none">
-                                <TableCell colSpan={3} className="p-1 py-0.5 text-right text-muted-foreground">PPN ({ppnRate}%)</TableCell>
-                                <TableCell className="text-right p-1 py-0.5 font-medium">{formatIDR(ppnAmount)}</TableCell>
-                              </TableRow>
-                            );
-                          }
-
-                          // Other Tax Row
-                          if (otherRate > 0) {
-                            rows.push(
-                              <TableRow key="other" className="border-none">
-                                <TableCell colSpan={3} className="p-1 py-0.5 text-right text-muted-foreground">{invoice.taxOtherLabel || 'Lainnya'} ({otherRate}%)</TableCell>
-                                <TableCell className="text-right p-1 py-0.5 font-medium">{formatIDR(otherAmount)}</TableCell>
-                              </TableRow>
-                            );
-                          }
-
-                          // PPh Deduction Row
-                          if (pphRate > 0) {
-                            rows.push(
-                              <TableRow key="pph" className="border-none">
-                                <TableCell colSpan={3} className="p-1 py-0.5 text-right text-muted-foreground">{invoice.taxPphType || 'Potongan PPh'} ({pphRate}%)</TableCell>
-                                <TableCell className="text-right p-1 py-0.5 font-medium">({formatIDR(pphAmount)})</TableCell>
-                              </TableRow>
-                            );
-                          }
-
-                          // Total Row
-                          rows.push(
-                            <TableRow key="total" className="border-none">
-                              <TableCell colSpan={3} className="p-1 py-4 text-right font-bold text-base">Total Bayar</TableCell>
-                              <TableCell className={`text-right p-1 py-4 font-bold text-base ${isModern ? "text-blue-800" : ""}`}>{formatIDR(totalTagihan)}</TableCell>
-                            </TableRow>
-                          );
-
-                          return rows;
-                        })()}
                       </TableBody>
                     </Table>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 mt-6 items-end">
-                    <div className="space-y-3">
-                      <div className="p-3 border rounded-sm bg-muted/5 border-black/10">
-                        <div className="text-[10px] font-bold uppercase mb-1.5">Payment Information:</div>
-                        {selectedBanks.map((b) => (
-                          <div key={b.id} className="text-[11px] leading-tight mb-1.5 last:mb-0">
-                            <span className="font-bold">{b.label}</span>: {b.accountName} - <span className="font-mono font-bold">{b.accountNumber}</span>
-                          </div>
-                        ))}
-                      </div>
+                  {/* Totals Section */}
+                  <div className="flex justify-between items-start mb-12">
+                    <div className="w-1/2">
                       {termsText && (
-                        <div className="text-[10px] leading-snug text-muted-foreground">
-                          <span className="font-bold text-black uppercase inline mr-1">Terms & Conditions:</span>
-                          {termsText}
+                        <div className="text-[10px] text-slate-500 pr-8">
+                          <div className="font-black uppercase tracking-widest mb-1 text-slate-400">Terms & Conditions:</div>
+                          <div className="whitespace-pre-wrap leading-tight">{termsText}</div>
                         </div>
                       )}
                     </div>
+                    <div className="w-[280px] space-y-2">
+                      <div className="flex justify-between text-[11px] px-2">
+                        <span className="text-slate-400 font-bold uppercase tracking-widest">Subtotal</span>
+                        <span className="font-bold text-slate-900">{formatIDR(dpp.toString())}</span>
+                      </div>
+                      {ppnRate > 0 && (
+                        <div className="flex justify-between text-[11px] px-2">
+                          <span className="text-slate-400 font-bold uppercase tracking-widest">PPN ({ppnRate}%)</span>
+                          <span className="font-bold text-slate-900">{formatIDR(ppnAmount.toString())}</span>
+                        </div>
+                      )}
+                      {otherRate > 0 && (
+                        <div className="flex justify-between text-[11px] px-2">
+                          <span className="text-slate-400 font-bold uppercase tracking-widest">{invoice.taxOtherLabel || "Lain-lain"} ({otherRate}%)</span>
+                          <span className="font-bold text-slate-900">{formatIDR(otherAmount.toString())}</span>
+                        </div>
+                      )}
+                      {pphRate > 0 && (
+                        <div className="flex justify-between text-[11px] px-2">
+                          <span className="text-slate-400 font-bold uppercase tracking-widest">{invoice.taxPphType || "PPh"} ({pphRate}%)</span>
+                          <span className="font-bold text-red-600">({formatIDR(pphAmount.toString())})</span>
+                        </div>
+                      )}
+                      <div className="bg-slate-900 text-white p-4 rounded-xl shadow-lg shadow-slate-200 mt-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Total Payable</span>
+                          <span className="text-xl font-black">{formatIDR(totalTagihan.toString())}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-                    <div className="flex flex-col items-center text-center">
-                      <div className="text-[10px] font-bold uppercase mb-2 tracking-wider">Authorized Signature</div>
-                      <div className="h-16 flex items-center justify-center mb-2">
-                        {settings.signatureUrl ? (
-                          <img src={settings.signatureUrl} alt="" className="max-h-full w-auto" />
-                        ) : (
-                          <div className="h-14" />
+                  {/* Footer: Payment Info & Signature */}
+                  <div className="grid grid-cols-2 gap-12 pt-8 border-t border-slate-100">
+                    <div>
+                      <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Payment Information:</div>
+                      <div className="space-y-3">
+                        {selectedBanks.map((bank, idx) => (
+                          <div key={idx} className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <div className="font-bold text-slate-900 text-[11px]">{bank.label}</div>
+                            <div className="font-mono text-[12px] font-bold text-blue-700">{bank.accountNumber}</div>
+                            <div className="text-[10px] text-slate-500 font-semibold uppercase">{bank.accountName}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="text-center flex flex-col items-center justify-end">
+                      <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-12">Authorized Signature</div>
+                      <div className="h-24 flex items-center justify-center relative mb-2">
+                        {settings.signatureUrl && (
+                          <img src={settings.signatureUrl} alt="Signature" className="max-h-full w-auto object-contain" />
                         )}
                       </div>
-                      <div className="font-bold text-[12px] border-b-2 border-black px-6 leading-none mb-1.5">{settings.signatureName}</div>
-                      <div className="text-[10px] text-muted-foreground leading-none">{settings.signatureTitle}</div>
+                      <div className="font-black text-slate-900 border-b-2 border-slate-900 px-6 pb-1 text-sm">{settings.signatureName}</div>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase mt-2 tracking-widest">{settings.signatureTitle || "Manager"}</div>
                     </div>
                   </div>
 
                   {footerText && (
-                    <div className="mt-12 pt-4 text-[10px] text-center text-muted-foreground italic border-t border-dashed">
+                    <div className="mt-12 pt-6 border-t border-slate-50 text-center text-[10px] text-slate-400 italic">
                       {footerText}
                     </div>
                   )}
+
                 </div>
               </td>
             </tr>
           </tbody>
           <tfoot>
-            <tr><td><div className="print-footer-space h-[40mm] print:h-[40mm]" /></td></tr>
+            <tr><td><div className="print-footer-space h-[10mm] print:h-[20mm]" /></td></tr>
           </tfoot>
         </table>
       </div>
