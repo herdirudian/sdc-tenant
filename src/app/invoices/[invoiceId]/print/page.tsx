@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getInvoiceById } from "@/actions/invoice";
-import { getCompanySettings } from "@/actions/settings";
+import { getCompanySettingsByTenantId } from "@/actions/settings";
 import { PrintControls } from "@/components/print-controls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -34,12 +34,12 @@ export default async function InvoicePrintPage(props: {
     if (!session) return redirect("/login");
     
     const userRole = session.user.role;
-    if (![UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF].includes(userRole)) {
-      return redirect("/login");
-    }
+      if (![UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF].includes(userRole)) {
+        return redirect("/login");
+      }
 
-    const settings = await getCompanySettings();
-    if (!settings) return notFound();
+      const settings = await getCompanySettingsByTenantId(invoice.tenantId);
+      if (!settings) return notFound();
 
     // Defensive check for relations
     if (!invoice.client) {

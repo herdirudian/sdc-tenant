@@ -16,7 +16,7 @@ import {
 } from "@/actions/invoice";
 import { sendInvoiceEmail, sendReceiptEmail } from "@/actions/email";
 import { addInvoiceFollowUp } from "@/actions/collection";
-import { getCompanySettings } from "@/actions/settings";
+import { getCompanySettingsByTenantId } from "@/actions/settings";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,7 +46,7 @@ export default async function InvoiceDetailPage({
 
   if (!invoice) notFound();
 
-  const settings = await getCompanySettings();
+  const settings = await getCompanySettingsByTenantId(invoice.tenantId);
   const activeBanks = settings.bankAccounts.filter((b) => b.isActive);
   const selectedBanks =
     invoice.bankAccounts.length > 0

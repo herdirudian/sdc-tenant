@@ -105,8 +105,7 @@ async function tryDeletePublicFile(url: string) {
   await unlink(diskPath).catch(() => undefined);
 }
 
-export async function getCompanySettings() {
-  const { tenantId, tenant } = await requireTenant();
+export async function getCompanySettingsByTenantId(tenantId: string) {
   const settings = await prisma.companySettings.findFirst({
     where: { tenantId },
     include: { bankAccounts: { orderBy: { createdAt: "asc" } } },
@@ -114,13 +113,19 @@ export async function getCompanySettings() {
 
   if (settings) return settings;
 
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
   return prisma.companySettings.create({
     data: { 
       tenantId, 
-      companyName: tenant.name || "Sistem Invoice SDC" 
+      companyName: tenant?.name || "Sistem Invoice SDC" 
     },
     include: { bankAccounts: { orderBy: { createdAt: "asc" } } },
   });
+}
+
+export async function getCompanySettings() {
+  const { tenantId } = await requireTenant();
+  return getCompanySettingsByTenantId(tenantId);
 }
 
 export async function updateCompanySettings(formData: FormData) {

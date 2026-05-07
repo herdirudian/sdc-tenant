@@ -176,7 +176,14 @@ export default async function SettingsPage({
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="logoFile">Upload Logo</Label>
-                <Input id="logoFile" name="logoFile" type="file" accept="image/*" />
+                <div className="flex items-center gap-4">
+                  <Input id="logoFile" name="logoFile" type="file" accept="image/*" className="flex-1" />
+                  {settings.logoUrl && (
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded border border-border bg-muted">
+                      <img src={settings.logoUrl} alt="Logo" className="h-full w-full object-contain" />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -187,7 +194,14 @@ export default async function SettingsPage({
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="letterheadFile">Upload Cover</Label>
-                <Input id="letterheadFile" name="letterheadFile" type="file" accept="image/*" />
+                <div className="flex items-center gap-4">
+                  <Input id="letterheadFile" name="letterheadFile" type="file" accept="image/*" className="flex-1" />
+                  {settings.letterheadUrl && (
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded border border-border bg-muted">
+                      <img src={settings.letterheadUrl} alt="Kop" className="h-full w-full object-contain" />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -198,7 +212,14 @@ export default async function SettingsPage({
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="signatureFile">Upload Signature Image</Label>
-                <Input id="signatureFile" name="signatureFile" type="file" accept="image/*" />
+                <div className="flex items-center gap-4">
+                  <Input id="signatureFile" name="signatureFile" type="file" accept="image/*" className="flex-1" />
+                  {settings.signatureUrl && (
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded border border-border bg-muted">
+                      <img src={settings.signatureUrl} alt="Signature" className="h-full w-full object-contain" />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
