@@ -161,9 +161,12 @@ export default async function InvoicePrintPage({
       {settings.letterheadUrl && (
         <div className="bg-kop fixed top-0 left-0 w-[210mm] h-[297mm] pointer-events-none hidden print:block" style={{ zIndex: -1 }}>
           <img
-            src={settings.letterheadUrl}
+            src={settings.letterheadUrl.startsWith('http') ? settings.letterheadUrl : settings.letterheadUrl}
             alt=""
             className="w-full h-full object-fill"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
           />
         </div>
       )}
@@ -183,6 +186,9 @@ export default async function InvoicePrintPage({
               src={settings.letterheadUrl}
               alt=""
               className="w-full h-full object-fill"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
             />
           </div>
         )}
