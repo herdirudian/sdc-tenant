@@ -16,376 +16,297 @@ export const dynamic = "force-dynamic";
 export default async function InvoicePrintPage(props: {
   params: Promise<{ invoiceId: string }>;
 }) {
-  const params = await props.params;
-  const invoiceId = params.invoiceId;
-  const invoice = await getInvoiceById(invoiceId);
-  if (!invoice) return notFound();
-
-  // Cek login
-  const session = await getSession();
-  if (!session || ![UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF].includes(session.user.role)) {
-    return redirect("/login");
+  let invoiceId: string;
+  try {
+    const params = await props.params;
+    invoiceId = params.invoiceId;
+  } catch (e) {
+    console.error("[Print] Error awaiting params:", e);
+    return <div>Error loading parameters</div>;
   }
 
-  const settings = await getCompanySettings();
-  if (!settings) return notFound();
+  try {
+    const invoice = await getInvoiceById(invoiceId);
+    if (!invoice) return notFound();
 
-  const banks = (settings.bankAccounts || []).filter((b) => b.isActive);
-  
-  // Mapping bank yang aman dari null reference
-  const rawBanks = (invoice.bankAccounts && invoice.bankAccounts.length > 0)
-    ? invoice.bankAccounts.map((x) => x.bankAccount).filter(Boolean)
-    : banks;
+    // Cek login
+    const session = await getSession();
+    if (!session) return redirect("/login");
+    
+    const userRole = session.user.role;
+    if (![UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF].includes(userRole)) {
+      return redirect("/login");
+    }
 
-  const displayBanks = rawBanks.map(bank => ({
-     label: bank?.label || "Bank",
-     accountNumber: bank?.accountNumber || "-",
-     accountName: bank?.accountName || "-"
-   }));
+    const settings = await getCompanySettings();
+    if (!settings) return notFound();
 
-  const termsText = invoice.terms ?? settings.invoiceTerms ?? null;
-  const footerText = invoice.footer ?? settings.invoiceFooter ?? null;
+    // Defensive check for relations
+    if (!invoice.client) {
+      console.error(`[Print] Invoice ${invoiceId} has no client relation`);
+      return (
+        <div className="p-8 text-center">
+          <h1 className="text-xl font-bold text-red-600">Data Error</h1>
+          <p>Invoice ini tidak memiliki data Client yang valid. Silakan hubungi admin.</p>
+          <Link href={`/invoices/${invoiceId}`} className="text-blue-600 underline mt-4 block">Kembali</Link>
+        </div>
+      );
+    }
 
-  const amountBruto = Number(invoice.amountBruto?.toString() || "0");
-  const isInclusive = invoice.taxMethod === TaxMethod.INCLUSIVE;
+    const banks = (settings.bankAccounts || []).filter((b) => b.isActive);
+    
+    // Mapping bank yang aman dari null reference
+    const rawBanks = (invoice.bankAccounts && invoice.bankAccounts.length > 0)
+      ? invoice.bankAccounts.map((x) => x.bankAccount).filter(Boolean)
+      : banks;
 
-  const ppnRate = Number(invoice.taxPpnRate?.toString() || "0");
-  const pphRate = Number(invoice.taxPphRate?.toString() || "0");
-  const otherRate = Number(invoice.taxOtherRate?.toString() || "0");
+    const displayBanks = rawBanks.map(bank => ({
+      label: bank?.label || "Bank",
+      accountNumber: bank?.accountNumber || "-",
+      accountName: bank?.accountName || "-"
+    }));
 
-  let dpp = amountBruto;
-  if (isInclusive) {
-    dpp = amountBruto / (1 + (ppnRate || 0) / 100);
-  }
+    const termsText = invoice.terms ?? settings.invoiceTerms ?? "";
+    const footerText = invoice.footer ?? settings.invoiceFooter ?? "";
 
-  const ppnAmount = dpp * ((ppnRate || 0) / 100);
-  const pphAmount = dpp * ((pphRate || 0) / 100);
-  const otherAmount = dpp * ((otherRate || 0) / 100);
+    const amountBruto = Number(invoice.amountBruto?.toString() || "0");
+    const isInclusive = invoice.taxMethod === TaxMethod.INCLUSIVE;
 
-  const totalTagihan = dpp + ppnAmount + otherAmount - pphAmount;
+    const ppnRate = Number(invoice.taxPpnRate?.toString() || "0");
+    const pphRate = Number(invoice.taxPphRate?.toString() || "0");
+    const otherRate = Number(invoice.taxOtherRate?.toString() || "0");
 
-  const isModern = invoice.template === InvoiceTemplate.MODERN;
-  const primaryColor = "text-blue-700";
-  const borderColor = "border-slate-200";
-  const headerBg = "bg-slate-50";
+    let dpp = amountBruto;
+    if (isInclusive) {
+      dpp = amountBruto / (1 + ppnRate / 100);
+    }
 
-  return (
-    <div className="min-h-screen bg-muted/30 print:bg-transparent flex flex-col items-center p-0 md:p-8 print:p-0 portal-light-theme">
-      <style dangerouslySetInnerHTML={{ __html: `
-        .portal-light-theme {
-          --background: 0 0% 100%;
-          --foreground: 222.2 84% 4.9%;
-          --card: 0 0% 100%;
-          --card-foreground: 222.2 84% 4.9%;
-          --muted: 210 40% 96.1%;
-          --muted-foreground: 215.4 16.3% 46.9%;
-          --border: 214.3 31.8% 91.4%;
-          background-color: white;
-          color: #1e293b !important;
-        }
-        @media print {
+    const ppnAmount = dpp * (ppnRate / 100);
+    const pphAmount = dpp * (pphRate / 100);
+    const otherAmount = dpp * (otherRate / 100);
+
+    const totalTagihan = dpp + ppnAmount + otherAmount - pphAmount;
+
+    const primaryColor = "text-blue-700";
+    const borderColor = "border-slate-200";
+    const headerBg = "bg-slate-50";
+
+    return (
+      <div className="min-h-screen bg-muted/30 print:bg-transparent flex flex-col items-center p-0 md:p-8 print:p-0 portal-light-theme">
+        <style dangerouslySetInnerHTML={{ __html: `
           .portal-light-theme {
-            background-color: transparent !important;
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+            --muted: 210 40% 96.1%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --border: 214.3 31.8% 91.4%;
+            background-color: white;
+            color: #1e293b !important;
           }
-        }
-        .portal-light-theme * {
-          border-color: #e2e8f0 !important;
-        }
-        .portal-light-theme .text-white {
-          color: white !important;
-        }
-        .portal-light-theme .text-slate-900,
-        .portal-light-theme .text-slate-800,
-        .portal-light-theme .text-slate-700,
-        .portal-light-theme .text-black {
-          color: #0f172a !important;
-        }
-        .portal-light-theme .text-muted-foreground {
-          color: #64748b !important;
-        }
-        .portal-light-theme .text-destructive {
-          color: #ef4444 !important;
-        }
-        .portal-light-theme .bg-muted\/30 {
-          background-color: #f8fafc !important;
-        }
-        .portal-light-theme .bg-muted\/20 {
-          background-color: #f1f5f9 !important;
-        }
-        .portal-light-theme .bg-blue-50\/50 {
-          background-color: #eff6ff !important;
-        }
-        .portal-light-theme .bg-blue-50 {
-          background-color: #eff6ff !important;
-        }
-        .portal-light-theme .text-blue-800 {
-          color: #1e40af !important;
-        }
-        .portal-light-theme .text-blue-900 {
-          color: #1e3a8a !important;
-        }
-        .portal-light-theme .border-blue-100 {
-          border-color: #dbeafe !important;
-        }
-        .portal-light-theme .border-blue-50 {
-          border-color: #eff6ff !important;
-        }
-        @media print {
-          @page {
-            size: A4;
-            margin: 0;
+          @media print {
+            .portal-light-theme {
+              background-color: transparent !important;
+            }
+            @page {
+              size: A4;
+              margin: 0;
+            }
+            body {
+              margin: 0;
+              -webkit-print-color-adjust: exact;
+            }
+            .bg-kop {
+              position: fixed;
+              top: 0;
+              left: 0;
+              width: 210mm;
+              height: 297mm;
+              z-index: -1;
+            }
+            .print-header-space {
+              height: 10mm;
+            }
+            .print-footer-space {
+              height: 10mm;
+            }
           }
-          body {
-            margin: 0;
-            -webkit-print-color-adjust: exact;
-            background-color: transparent !important;
-          }
-          .bg-kop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 210mm;
-            height: 297mm;
-            z-index: -1;
-          }
-          .print-header-space {
-            height: 10mm;
-          }
-          .print-footer-space {
-            height: 10mm;
+          .portal-light-theme * {
+            border-color: #e2e8f0 !important;
           }
           .print-container {
-            width: 100% !important;
-            height: auto !important;
-            overflow: visible !important;
-            background-color: transparent !important;
-            box-shadow: none !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            width: 100%;
+            max-width: 210mm;
           }
-        }
-      `}} />
-      
-      {/* Fixed Background for Print */}
-      {settings.letterheadUrl && (
-        <div className="bg-kop fixed top-0 left-0 w-[210mm] h-[297mm] pointer-events-none hidden print:block" style={{ zIndex: -1 }}>
-          <img
-            src={settings.letterheadUrl.startsWith('http') ? settings.letterheadUrl : settings.letterheadUrl}
-            alt=""
-            className="w-full h-full object-fill"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
-          />
-        </div>
-      )}
-
-      <div className="flex items-center justify-between print:hidden w-full max-w-[210mm] mb-4 px-4 md:px-0">
-        <Link href={`/invoices/${invoice.id}`} className="text-sm underline">
-          Back to Invoice
-        </Link>
-        <PrintControls />
-      </div>
-
-      <div className="print-container relative w-full md:w-[210mm] min-h-[297mm] bg-white print:bg-transparent shadow-2xl print:shadow-none print:m-0 overflow-hidden print:overflow-visible">
-        {/* Screen-only Background Layer */}
+        `}} />
+        
         {settings.letterheadUrl && (
-          <div className="absolute inset-0 pointer-events-none print:hidden">
+          <div className="bg-kop fixed top-0 left-0 w-[210mm] h-[297mm] pointer-events-none hidden print:block" style={{ zIndex: -1 }}>
             <img
               src={settings.letterheadUrl}
               alt=""
               className="w-full h-full object-fill"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
             />
           </div>
         )}
 
-        {/* Content Table for Print Spacing */}
-        <table className="relative z-10 w-full border-collapse bg-transparent print:bg-transparent">
-          <thead>
-            <tr><td><div className="print-header-space h-[10mm] print:h-[10mm]" /></td></tr>
-          </thead>
-          <tbody className="bg-transparent print:bg-transparent">
-            <tr className="bg-transparent print:bg-transparent">
-              <td className="bg-transparent print:bg-transparent">
-                <div className="px-[15mm] text-[12px] leading-normal bg-transparent print:bg-transparent">
-                  
-                  {/* Header: Logo & Company Info */}
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      {settings.logoUrl && (
-                        <img src={settings.logoUrl} alt="Logo" className="h-16 w-auto object-contain mb-4" />
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold text-lg text-slate-900 uppercase tracking-tight">{settings.companyName}</div>
-                      <div className="text-[11px] text-slate-500 max-w-[300px] leading-tight mt-1">{settings.address}</div>
-                      <div className="text-[11px] font-semibold mt-1">NPWP: {settings.npwp || "-"}</div>
-                    </div>
-                  </div>
+        <div className="flex items-center justify-between print:hidden w-full max-w-[210mm] mb-4 px-4 md:px-0">
+          <Link href={`/invoices/${invoice.id}`} className="text-sm underline">
+            Back to Invoice
+          </Link>
+          <PrintControls />
+        </div>
 
-                  {/* Invoice Title & Meta */}
-                  <div className="flex justify-between items-end mb-10 border-b-2 border-slate-900 pb-4">
-                    <div>
-                      <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tighter leading-none">Invoice</h1>
-                      <div className="font-mono text-sm mt-2 text-slate-600 font-bold">{invoice.invoiceNumber}</div>
-                    </div>
-                    <div className="text-right space-y-1">
-                      <div className="flex justify-end gap-4 text-[11px]">
-                        <span className="text-slate-400 font-bold uppercase tracking-widest">Issue Date</span>
-                        <span className="font-bold text-slate-900">{formatDateID(invoice.createdAt)}</span>
-                      </div>
-                      <div className="flex justify-end gap-4 text-[11px]">
-                        <span className="text-slate-400 font-bold uppercase tracking-widest">Due Date</span>
-                        <span className="font-bold text-red-600">{formatDateID(invoice.dueDate)}</span>
-                      </div>
-                      {invoice.taxInvoiceNumber && (
-                        <div className="flex justify-end gap-4 text-[11px]">
-                          <span className="text-slate-400 font-bold uppercase tracking-widest">Faktur Pajak</span>
-                          <span className="font-bold text-blue-700">{invoice.taxInvoiceNumber}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+        <div className="print-container relative bg-white shadow-2xl print:shadow-none overflow-hidden">
+          {/* Screen Background */}
+          {settings.letterheadUrl && (
+            <div className="absolute inset-0 pointer-events-none print:hidden">
+              <img src={settings.letterheadUrl} alt="" className="w-full h-full object-fill" />
+            </div>
+          )}
 
-                  {/* Billing Info */}
-                  <div className="grid grid-cols-2 gap-12 mb-10">
-                    <div>
-                      <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Bill To:</div>
-                      <div className="font-bold text-base text-slate-900">{invoice.client.companyName ?? invoice.client.name}</div>
-                      <div className="text-[11px] text-slate-500 whitespace-pre-wrap leading-relaxed mt-1">{invoice.client.address}</div>
-                      <div className="text-[11px] font-semibold mt-1">NPWP: {invoice.client.npwp || "-"}</div>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                      <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Project / Reference:</div>
-                      <div className="font-bold text-slate-900">{invoice.project?.name ?? "Layanan Jasa"}</div>
-                      {invoice.poReference && (
-                        <div className="text-[11px] mt-1 text-slate-600 font-medium">PO Ref: {invoice.poReference}</div>
-                      )}
-                      <div className="text-[11px] mt-1 text-slate-600 font-medium">Type: {invoice.type}</div>
-                    </div>
-                  </div>
+          <div className="relative z-10 px-[15mm] py-[10mm]">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                {settings.logoUrl && (
+                  <img src={settings.logoUrl} alt="Logo" className="h-16 w-auto object-contain mb-4" />
+                )}
+              </div>
+              <div className="text-right">
+                <div className="font-bold text-lg text-slate-900 uppercase">{settings.companyName}</div>
+                <div className="text-[11px] text-slate-500 max-w-[300px] mt-1">{settings.address}</div>
+                <div className="text-[11px] font-semibold mt-1">NPWP: {settings.npwp || "-"}</div>
+              </div>
+            </div>
 
-                  {/* Table Items */}
-                  <div className="mb-8">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="hover:bg-transparent border-b-2 border-slate-900">
-                          <TableHead className="h-10 text-[11px] font-black uppercase text-slate-900 p-2">Description</TableHead>
-                          <TableHead className="h-10 text-center text-[11px] font-black uppercase text-slate-900 p-2 w-20">Qty</TableHead>
-                          <TableHead className="h-10 text-right text-[11px] font-black uppercase text-slate-900 p-2 w-32">Price</TableHead>
-                          <TableHead className="h-10 text-right text-[11px] font-black uppercase text-slate-900 p-2 w-32">Total</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {invoice.items && invoice.items.length > 0 ? (
-                          invoice.items.map((item, idx) => (
-                            <TableRow key={idx} className="hover:bg-transparent border-b border-slate-100">
-                              <TableCell className="p-3 align-top">
-                                <div className="font-bold text-slate-900">{item.description}</div>
-                              </TableCell>
-                              <TableCell className="p-3 text-center align-top font-medium">{item.quantity.toString()}</TableCell>
-                              <TableCell className="p-3 text-right align-top font-medium">{formatIDR(item.price.toString())}</TableCell>
-                              <TableCell className="p-3 text-right align-top font-bold text-slate-900">{formatIDR(item.amount.toString())}</TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow className="hover:bg-transparent border-b border-slate-100">
-                            <TableCell className="p-3 align-top font-bold text-slate-900">{invoice.type}</TableCell>
-                            <TableCell className="p-3 text-center align-top font-medium">1</TableCell>
-                            <TableCell className="p-3 text-right align-top font-medium">{formatIDR(amountBruto.toString())}</TableCell>
-                            <TableCell className="p-3 text-right align-top font-bold text-slate-900">{formatIDR(amountBruto.toString())}</TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  {/* Totals Section */}
-                  <div className="flex justify-between items-start mb-12">
-                    <div className="w-1/2">
-                      {termsText && (
-                        <div className="text-[10px] text-slate-500 pr-8">
-                          <div className="font-black uppercase tracking-widest mb-1 text-slate-400">Terms & Conditions:</div>
-                          <div className="whitespace-pre-wrap leading-tight">{termsText}</div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="w-[280px] space-y-2">
-                      <div className="flex justify-between text-[11px] px-2">
-                        <span className="text-slate-400 font-bold uppercase tracking-widest">Subtotal</span>
-                        <span className="font-bold text-slate-900">{formatIDR(dpp.toString())}</span>
-                      </div>
-                      {ppnRate > 0 && (
-                        <div className="flex justify-between text-[11px] px-2">
-                          <span className="text-slate-400 font-bold uppercase tracking-widest">PPN ({ppnRate}%)</span>
-                          <span className="font-bold text-slate-900">{formatIDR(ppnAmount.toString())}</span>
-                        </div>
-                      )}
-                      {otherRate > 0 && (
-                        <div className="flex justify-between text-[11px] px-2">
-                          <span className="text-slate-400 font-bold uppercase tracking-widest">{invoice.taxOtherLabel || "Lain-lain"} ({otherRate}%)</span>
-                          <span className="font-bold text-slate-900">{formatIDR(otherAmount.toString())}</span>
-                        </div>
-                      )}
-                      {pphRate > 0 && (
-                        <div className="flex justify-between text-[11px] px-2">
-                          <span className="text-slate-400 font-bold uppercase tracking-widest">{invoice.taxPphType || "PPh"} ({pphRate}%)</span>
-                          <span className="font-bold text-red-600">({formatIDR(pphAmount.toString())})</span>
-                        </div>
-                      )}
-                      <div className="bg-slate-900 text-white p-4 rounded-xl shadow-lg shadow-slate-200 mt-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Total Payable</span>
-                          <span className="text-xl font-black">{formatIDR(totalTagihan.toString())}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer: Payment Info & Signature */}
-                  <div className="grid grid-cols-2 gap-12 pt-8 border-t border-slate-100">
-                    <div>
-                      <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Payment Information:</div>
-                      <div className="space-y-3">
-                        {displayBanks.map((bank, idx) => (
-                          <div key={idx} className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                            <div className="font-bold text-slate-900 text-[11px]">{bank.label}</div>
-                            <div className="font-mono text-[12px] font-bold text-blue-700">{bank.accountNumber}</div>
-                            <div className="text-[10px] text-slate-500 font-semibold uppercase">{bank.accountName}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="text-center flex flex-col items-center justify-end">
-                      <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-12">Authorized Signature</div>
-                      <div className="h-24 flex items-center justify-center relative mb-2">
-                        {settings.signatureUrl && (
-                          <img src={settings.signatureUrl} alt="Signature" className="max-h-full w-auto object-contain" />
-                        )}
-                      </div>
-                      <div className="font-black text-slate-900 border-b-2 border-slate-900 px-6 pb-1 text-sm">{settings.signatureName}</div>
-                      <div className="text-[10px] text-slate-400 font-bold uppercase mt-2 tracking-widest">{settings.signatureTitle || "Manager"}</div>
-                    </div>
-                  </div>
-
-                  {footerText && (
-                    <div className="mt-12 pt-6 border-t border-slate-50 text-center text-[10px] text-slate-400 italic">
-                      {footerText}
-                    </div>
-                  )}
-
+            {/* Title */}
+            <div className="flex justify-between items-end mb-10 border-b-2 border-slate-900 pb-4">
+              <div>
+                <h1 className="text-4xl font-black text-slate-900 uppercase">Invoice</h1>
+                <div className="font-mono text-sm mt-2 text-slate-600 font-bold">{invoice.invoiceNumber}</div>
+              </div>
+              <div className="text-right space-y-1">
+                <div className="flex justify-end gap-4 text-[11px]">
+                  <span className="text-slate-400 font-bold uppercase">Issue Date</span>
+                  <span className="font-bold text-slate-900">{formatDateID(invoice.createdAt)}</span>
                 </div>
-              </td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr><td><div className="print-footer-space h-[10mm] print:h-[20mm]" /></td></tr>
-          </tfoot>
-        </table>
+                <div className="flex justify-end gap-4 text-[11px]">
+                  <span className="text-slate-400 font-bold uppercase">Due Date</span>
+                  <span className="font-bold text-red-600">{formatDateID(invoice.dueDate)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Billing */}
+            <div className="grid grid-cols-2 gap-12 mb-10">
+              <div>
+                <div className="text-[10px] font-black uppercase text-slate-400 mb-2">Bill To:</div>
+                <div className="font-bold text-base text-slate-900">{invoice.client?.companyName ?? invoice.client?.name ?? "No Name"}</div>
+                <div className="text-[11px] text-slate-500 mt-1">{invoice.client?.address}</div>
+                <div className="text-[11px] font-semibold mt-1">NPWP: {invoice.client?.npwp || "-"}</div>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <div className="text-[10px] font-black uppercase text-slate-400 mb-2">Project / Reference:</div>
+                <div className="font-bold text-slate-900">{invoice.project?.name ?? "Layanan Jasa"}</div>
+                <div className="text-[11px] mt-1 text-slate-600">Type: {invoice.type}</div>
+              </div>
+            </div>
+
+            {/* Items */}
+            <div className="mb-8">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent border-b-2 border-slate-900">
+                    <TableHead className="h-10 text-[11px] font-black uppercase text-slate-900">Description</TableHead>
+                    <TableHead className="h-10 text-center text-[11px] font-black uppercase text-slate-900 w-20">Qty</TableHead>
+                    <TableHead className="h-10 text-right text-[11px] font-black uppercase text-slate-900 w-32">Price</TableHead>
+                    <TableHead className="h-10 text-right text-[11px] font-black uppercase text-slate-900 w-32">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invoice.items && invoice.items.length > 0 ? (
+                    invoice.items.map((item, idx) => (
+                      <TableRow key={idx} className="hover:bg-transparent border-b border-slate-100">
+                        <TableCell className="p-3 align-top font-bold text-slate-900">{item.description}</TableCell>
+                        <TableCell className="p-3 text-center align-top">{item.quantity?.toString() || "0"}</TableCell>
+                        <TableCell className="p-3 text-right align-top">{formatIDR(item.price?.toString() || "0")}</TableCell>
+                        <TableCell className="p-3 text-right align-top font-bold">{formatIDR(item.amount?.toString() || "0")}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell className="p-3 font-bold">{invoice.type}</TableCell>
+                      <TableCell className="p-3 text-center">1</TableCell>
+                      <TableCell className="p-3 text-right">{formatIDR(amountBruto.toString())}</TableCell>
+                      <TableCell className="p-3 text-right font-bold">{formatIDR(amountBruto.toString())}</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Totals */}
+            <div className="flex justify-between items-start mb-12">
+              <div className="w-1/2 text-[10px] text-slate-500 pr-8">
+                <div className="font-black uppercase text-slate-400 mb-1">Terms:</div>
+                <div className="whitespace-pre-wrap">{termsText}</div>
+              </div>
+              <div className="w-[280px] space-y-2">
+                <div className="flex justify-between text-[11px] px-2">
+                  <span className="text-slate-400 font-bold uppercase">Subtotal</span>
+                  <span className="font-bold text-slate-900">{formatIDR(dpp.toString())}</span>
+                </div>
+                {ppnRate > 0 && (
+                  <div className="flex justify-between text-[11px] px-2">
+                    <span className="text-slate-400 font-bold uppercase">PPN ({ppnRate}%)</span>
+                    <span className="font-bold text-slate-900">{formatIDR(ppnAmount.toString())}</span>
+                  </div>
+                )}
+                <div className="bg-slate-900 text-white p-4 rounded-xl mt-4 flex justify-between items-center">
+                  <span className="text-[10px] font-black uppercase opacity-70">Total Payable</span>
+                  <span className="text-xl font-black">{formatIDR(totalTagihan.toString())}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="grid grid-cols-2 gap-12 pt-8 border-t border-slate-100">
+              <div>
+                <div className="text-[10px] font-black uppercase text-slate-400 mb-3">Payment Information:</div>
+                <div className="space-y-2">
+                  {displayBanks.map((bank, idx) => (
+                    <div key={idx} className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                      <div className="font-bold text-[11px]">{bank.label}</div>
+                      <div className="font-mono text-[12px] font-bold text-blue-700">{bank.accountNumber}</div>
+                      <div className="text-[10px] text-slate-500 uppercase">{bank.accountName}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="text-center flex flex-col items-center justify-end">
+                <div className="text-[11px] font-bold text-slate-400 uppercase mb-12">Authorized Signature</div>
+                {settings.signatureUrl && (
+                  <img src={settings.signatureUrl} alt="Signature" className="h-20 w-auto object-contain mb-2" />
+                )}
+                <div className="font-black text-slate-900 border-b-2 border-slate-900 px-6 pb-1 text-sm">{settings.signatureName}</div>
+                <div className="text-[10px] text-slate-400 font-bold uppercase mt-2">{settings.signatureTitle || "Manager"}</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  } catch (err) {
+    console.error(`[Print] Fatal error rendering invoice ${invoiceId}:`, err);
+    return (
+      <div className="p-8 text-center">
+        <h1 className="text-xl font-bold text-red-600">Server Error</h1>
+        <p>Terjadi kesalahan saat memproses halaman print invoice.</p>
+        <p className="text-xs text-slate-400 mt-2">Error: {err instanceof Error ? err.message : "Unknown"}</p>
+        <Link href={`/invoices/${invoiceId}`} className="text-blue-600 underline mt-4 block">Kembali</Link>
+      </div>
+    );
+  }
 }
