@@ -191,10 +191,13 @@ export async function updateOwnerSmtpSettings(formData: FormData) {
     let smtpPassEnc: string | null = null;
     if (smtpPass) {
       try {
+        console.log("DEBUG: Attempting encryption with APP_ENCRYPTION_KEY length:", process.env.APP_ENCRYPTION_KEY?.length || 0);
         smtpPassEnc = encryptSecret(smtpPass);
       } catch (err) {
         console.error("Encryption Error:", err);
-        return redirect("/admin?error=encryption_failed&msg=APP_ENCRYPTION_KEY_missing_or_invalid");
+        const errType = err instanceof Error ? err.name : "UnknownError";
+        const errMsg = err instanceof Error ? err.message : "No message";
+        return redirect(`/admin?error=encryption_failed&msg=${encodeURIComponent(`${errType}: ${errMsg}`)}`);
       }
     }
 
