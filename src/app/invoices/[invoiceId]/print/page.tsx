@@ -198,7 +198,7 @@ export default async function InvoicePrintPage({
                 <div className="px-[15mm] text-[12px] leading-normal bg-transparent print:bg-transparent">
                   
                   {/* Header: Logo & Company Info */}
-                  <div className="flex justify-between items-start mb-8 print:hidden">
+                  <div className="flex justify-between items-start mb-8">
                     <div>
                       {settings.logoUrl && (
                         <img src={settings.logoUrl} alt="Logo" className="h-16 w-auto object-contain mb-4" />
