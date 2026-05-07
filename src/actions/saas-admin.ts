@@ -8,6 +8,8 @@ import { revalidatePath } from "next/cache";
 
 import { encryptSecret } from "@/lib/secret";
 
+import { sendEmail } from "@/lib/email";
+
 export async function requireSystemAdmin() {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -208,6 +210,34 @@ export async function updateOwnerSmtpSettings(formData: FormData) {
   });
 
   revalidatePath("/admin");
+}
+
+export async function testOwnerSmtpSettings(formData: FormData) {
+  const user = await requireSystemAdmin();
+  if (!user) redirect("/?error=unauthorized_saas_admin");
+
+  const toEmail = formData.get("toEmail") as string;
+  if (!toEmail) redirect("/admin?error=invalid_test_email");
+
+  try {
+    await sendEmail({
+      to: toEmail,
+      subject: `Test SMTP System - Solusi Invoice`,
+      html: `
+        <div style="font-family: sans-serif; padding: 20px;">
+          <h2>Test SMTP System Berhasil!</h2>
+          <p>Email ini dikirim untuk memverifikasi pengaturan SMTP <b>System Owner</b> di Solusi Invoice.</p>
+          <p>Jika Anda menerima email ini, berarti konfigurasi email sistem Anda sudah benar.</p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("Owner SMTP Test Error:", err);
+    const msg = err instanceof Error ? err.message : "failed";
+    redirect(`/admin?error=smtp_test&msg=${encodeURIComponent(msg)}`);
+  }
+
+  redirect("/admin?smtpTest=ok");
 }
 
 export async function getGlobalAuditLogs(params: { q?: string; page?: number }) {

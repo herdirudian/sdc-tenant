@@ -1,9 +1,9 @@
-import { getAdminStats, getTenantsList, getRevenueStats, getGlobalSettings, updateGlobalSettings, updateOwnerSmtpSettings, getGlobalAuditLogs, getDatabaseHealth } from "@/actions/saas-admin";
+import { getAdminStats, getTenantsList, getRevenueStats, getGlobalSettings, updateGlobalSettings, updateOwnerSmtpSettings, testOwnerSmtpSettings, getGlobalAuditLogs, getDatabaseHealth } from "@/actions/saas-admin";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateID, formatIDR } from "@/lib/format";
-import { Users, Building2, CreditCard, Clock, Search, Eye, DollarSign, ArrowUpRight, History, Settings, Megaphone, ShieldAlert, ShieldCheck, Database, Server, Cpu, Mail } from "lucide-react";
+import { Users, Building2, CreditCard, Clock, Search, Eye, DollarSign, ArrowUpRight, History, Settings, Megaphone, ShieldAlert, ShieldCheck, Database, Server, Cpu, Mail, Send, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,9 +18,9 @@ export const dynamic = "force-dynamic";
 export default async function AdminDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; page?: string; error?: string; msg?: string; smtpTest?: string }>;
 }) {
-  const { q, status, page } = await searchParams;
+  const { q, status, page, error, msg, smtpTest } = await searchParams;
   const stats = await getAdminStats();
   const revenue = await getRevenueStats();
   const settings = await getGlobalSettings();
@@ -38,6 +38,20 @@ export default async function AdminDashboardPage({
         <h1 className="text-3xl font-bold tracking-tight">System Owner Dashboard</h1>
         <p className="text-muted-foreground">Pantau pertumbuhan dan pendapatan sistem Anda.</p>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4" />
+          <span>Error: {msg || "Terjadi kesalahan sistem."}</span>
+        </div>
+      )}
+
+      {smtpTest === "ok" && (
+        <div className="rounded-lg border border-green-500/50 bg-green-500/10 px-4 py-3 text-sm text-green-600 flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4" />
+          <span>Test email berhasil terkirim! Silakan cek inbox Anda.</span>
+        </div>
+      )}
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border-primary/20 bg-primary/5">
@@ -455,6 +469,30 @@ export default async function AdminDashboardPage({
                 </CardContent>
                 <CardFooter className="bg-muted/30 pt-4">
                   <Button type="submit">Simpan Pengaturan SMTP</Button>
+                </CardFooter>
+              </form>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Send className="h-5 w-5 text-green-500" />
+                  <CardTitle>Test SMTP System</CardTitle>
+                </div>
+                <CardDescription>Kirim email percobaan untuk memastikan SMTP System berfungsi.</CardDescription>
+              </CardHeader>
+              <form action={testOwnerSmtpSettings}>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="toEmail">Email Tujuan</Label>
+                    <Input id="toEmail" name="toEmail" type="email" placeholder="nama@gmail.com" required />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Pastikan Anda sudah menyimpan pengaturan SMTP sebelum melakukan test.</p>
+                </CardContent>
+                <CardFooter className="bg-muted/30 pt-4">
+                  <Button type="submit" variant="outline" className="w-full">
+                    Kirim Test Email
+                  </Button>
                 </CardFooter>
               </form>
             </Card>
