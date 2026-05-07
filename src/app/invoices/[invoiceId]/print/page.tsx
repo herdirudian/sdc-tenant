@@ -29,20 +29,22 @@ export default async function InvoicePrintPage({
   }
 
   const settings = await getCompanySettings();
-  const banks = settings.bankAccounts.filter((b) => b.isActive);
+  if (!settings) return notFound();
+
+  const banks = (settings.bankAccounts || []).filter((b) => b.isActive);
   const selectedBanks =
-    invoice.bankAccounts.length > 0
+    (invoice.bankAccounts && invoice.bankAccounts.length > 0)
       ? invoice.bankAccounts.map((x) => x.bankAccount)
       : banks;
   const termsText = invoice.terms ?? settings.invoiceTerms ?? null;
   const footerText = invoice.footer ?? settings.invoiceFooter ?? null;
 
-  const amountBruto = Number(invoice.amountBruto.toString());
+  const amountBruto = Number(invoice.amountBruto?.toString() || "0");
   const isInclusive = invoice.taxMethod === TaxMethod.INCLUSIVE;
 
-  const ppnRate = Number(invoice.taxPpnRate.toString());
-  const pphRate = Number(invoice.taxPphRate.toString());
-  const otherRate = Number(invoice.taxOtherRate.toString());
+  const ppnRate = Number(invoice.taxPpnRate?.toString() || "0");
+  const pphRate = Number(invoice.taxPphRate?.toString() || "0");
+  const otherRate = Number(invoice.taxOtherRate?.toString() || "0");
 
   let dpp = amountBruto;
   if (isInclusive) {
