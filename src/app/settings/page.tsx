@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmailOutboxStatus, UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { FileText, Download } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +108,26 @@ export default async function SettingsPage({
               </form>
             )}
           </div>
+
+          {globalSettings.guideUrl && (
+            <div className="flex items-center justify-between rounded-lg border border-purple-100 bg-purple-50/50 p-4 dark:border-purple-900/50 dark:bg-purple-950/20">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-purple-100 p-2 dark:bg-purple-900/50">
+                  <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-purple-900 dark:text-purple-100">Panduan Penggunaan Sistem</div>
+                  <div className="text-xs text-purple-700 dark:text-purple-300">Pelajari cara menggunakan fitur-fitur Solusi Invoice.</div>
+                </div>
+              </div>
+              <Button asChild variant="outline" size="sm" className="border-purple-200 hover:bg-purple-100 dark:border-purple-800 dark:hover:bg-purple-900/50">
+                <a href={globalSettings.guideUrl} target="_blank" className="flex items-center gap-2">
+                  <Download className="h-4 w-4" />
+                  Download PDF
+                </a>
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

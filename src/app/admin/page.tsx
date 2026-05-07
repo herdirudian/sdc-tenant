@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateID, formatIDR } from "@/lib/format";
-import { Users, Building2, CreditCard, Clock, Search, Eye, DollarSign, ArrowUpRight, History, Settings, Megaphone, ShieldAlert, ShieldCheck, Database, Server, Cpu, Mail, Send, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Users, Building2, CreditCard, Clock, Search, Eye, DollarSign, ArrowUpRight, History, Settings, Megaphone, ShieldAlert, ShieldCheck, Database, Server, Cpu, Mail, Send, CheckCircle2, AlertTriangle, FileText, Download } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -493,6 +493,37 @@ export default async function AdminDashboardPage({
                   <Button type="submit" variant="outline" className="w-full">
                     Kirim Test Email
                   </Button>
+                </CardFooter>
+              </form>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-purple-500" />
+                  <CardTitle>Panduan Penggunaan (PDF)</CardTitle>
+                </div>
+                <CardDescription>Upload file PDF panduan sistem untuk didownload oleh Client.</CardDescription>
+              </CardHeader>
+              <form action={updateGlobalSettings} encType="multipart/form-data">
+                <CardContent className="space-y-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="guideFile">File PDF Panduan</Label>
+                    <Input id="guideFile" name="guideFile" type="file" accept=".pdf" />
+                  </div>
+                  {settings.guideUrl && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-2 rounded">
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <span>File saat ini: </span>
+                      <a href={settings.guideUrl} target="_blank" className="font-mono text-xs underline hover:text-primary">
+                        {settings.guideUrl.split("/").pop()}
+                      </a>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground italic">File ini akan muncul di halaman Pengaturan seluruh Client.</p>
+                </CardContent>
+                <CardFooter className="bg-muted/30 pt-4">
+                  <Button type="submit">Upload Panduan</Button>
                 </CardFooter>
               </form>
             </Card>

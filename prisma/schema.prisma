@@ -81,6 +81,7 @@ model GlobalSettings {
   announcementText  String?  @map("announcement_text") @db.Text
   subscriptionPrice Decimal  @default(100000.00) @map("subscription_price") @db.Decimal(18, 2)
   trialDays         Int      @default(3) @map("trial_days")
+  guideUrl          String?  @map("guide_url") // PDF Guide for clients
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   // SMTP Settings for Owner/System

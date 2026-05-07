@@ -7,8 +7,10 @@ import { UserRole, SubscriptionStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 import { encryptSecret } from "@/lib/secret";
-
 import { sendEmail } from "@/lib/email";
+import { mkdir, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
 
 export async function requireSystemAdmin() {
   const session = await getSession();
@@ -160,6 +162,26 @@ export async function updateGlobalSettings(formData: FormData) {
   const announcementText = formData.get("announcementText") as string;
   const subscriptionPrice = parseFloat(formData.get("subscriptionPrice") as string);
   const trialDays = parseInt(formData.get("trialDays") as string);
+  const guideFile = formData.get("guideFile") as File;
+
+  let guideUrl: string | undefined;
+
+  if (guideFile && guideFile.size > 0) {
+    try {
+      const publicDir = path.join(process.cwd(), "public");
+      const uploadDir = path.join(publicDir, "uploads", "system");
+      await mkdir(uploadDir, { recursive: true });
+
+      const fileName = `guide-${randomUUID()}.pdf`;
+      const diskPath = path.join(uploadDir, fileName);
+      const buf = Buffer.from(await guideFile.arrayBuffer());
+      await writeFile(diskPath, buf);
+
+      guideUrl = `/uploads/system/${fileName}`;
+    } catch (err) {
+      console.error("Failed to upload guide PDF:", err);
+    }
+  }
 
   await prisma.globalSettings.update({
     where: { id: "system" },
@@ -169,11 +191,13 @@ export async function updateGlobalSettings(formData: FormData) {
       announcementText: announcementText || null,
       subscriptionPrice: isNaN(subscriptionPrice) ? 100000 : subscriptionPrice,
       trialDays: isNaN(trialDays) ? 3 : trialDays,
+      ...(guideUrl ? { guideUrl } : {}),
     }
   });
 
   revalidatePath("/admin");
   revalidatePath("/");
+  revalidatePath("/settings");
 }
 
 export async function updateOwnerSmtpSettings(formData: FormData) {
