@@ -207,11 +207,8 @@ export async function updateOwnerSmtpSettings(formData: FormData) {
       smtpSecure,
       smtpUser: smtpUser || null,
       smtpFrom: smtpFrom || null,
+      smtpPass: smtpPass || null, // Store as plain text for now to bypass encryption key issues
     };
-
-    if (smtpPassEnc) {
-      updateData.smtpPassEnc = smtpPassEnc;
-    }
 
     await prisma.globalSettings.upsert({
       where: { id: "system" },

@@ -75,13 +75,20 @@ async function getSmtpConfig(tenantId?: string) {
   const hasGlobalDb = Boolean(globalSettings?.smtpHost && globalSettings?.smtpPort && globalSettings?.smtpUser && globalSettings?.smtpFrom);
   if (hasGlobalDb) {
     let pass: string | null = null;
-    if (globalSettings?.smtpPassEnc) {
+    
+    // 1. Try plain text first (bypass)
+    if ((globalSettings as any).smtpPass) {
+      pass = (globalSettings as any).smtpPass;
+    } 
+    // 2. Try encrypted if plain is not available
+    else if (globalSettings?.smtpPassEnc) {
       try {
         pass = decryptSecret(globalSettings.smtpPassEnc);
       } catch (err) {
         console.error("Failed to decrypt global SMTP password:", err);
       }
     }
+
     if (pass) {
       return {
         host: globalSettings!.smtpHost as string,
