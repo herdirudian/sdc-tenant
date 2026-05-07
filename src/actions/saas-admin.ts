@@ -222,6 +222,7 @@ export async function updateOwnerSmtpSettings(formData: FormData) {
     revalidatePath("/admin");
     return redirect("/admin?saved=smtp");
   } catch (err) {
+    if ((err as any)?.digest?.startsWith("NEXT_REDIRECT")) throw err;
     console.error("Owner SMTP Save Error:", err);
     const msg = err instanceof Error ? err.message : "unknown_server_error";
     return redirect(`/admin?error=save_failed&msg=${encodeURIComponent(msg)}`);
