@@ -3,16 +3,18 @@ import { SubscriptionStatus, PaymentStatus } from "@prisma/client";
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const xenditCallbackToken = req.headers.get("x-callback-token");
+  const xenditCallbackToken = req.headers.get("x-callback-token")?.trim();
+  const expectedToken = process.env.XENDIT_CALLBACK_TOKEN?.trim();
 
   // Debug log untuk pengecekan di VPS
   console.log("DEBUG: Xendit Callback Token received:", xenditCallbackToken);
-  console.log("DEBUG: Expected Token from ENV:", process.env.XENDIT_CALLBACK_TOKEN);
+  console.log("DEBUG: Expected Token from ENV:", expectedToken);
 
   // Verify callback token if you have one set in Xendit dashboard
-  if (process.env.XENDIT_CALLBACK_TOKEN) {
-    if (xenditCallbackToken !== process.env.XENDIT_CALLBACK_TOKEN) {
+  if (expectedToken) {
+    if (xenditCallbackToken !== expectedToken) {
       console.error("Xendit Webhook Unauthorized: Token mismatch");
+      console.error(`Received length: ${xenditCallbackToken?.length}, Expected length: ${expectedToken?.length}`);
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
   } else {
