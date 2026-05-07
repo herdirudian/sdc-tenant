@@ -180,36 +180,52 @@ export async function updateOwnerSmtpSettings(formData: FormData) {
   const user = await requireSystemAdmin();
   if (!user) redirect("/?error=unauthorized_saas_admin");
 
-  const smtpHost = formData.get("smtpHost") as string;
-  const smtpPort = parseInt(formData.get("smtpPort") as string);
-  const smtpSecure = formData.get("smtpSecure") === "on";
-  const smtpUser = formData.get("smtpUser") as string;
-  const smtpPass = formData.get("smtpPass") as string;
-  const smtpFrom = formData.get("smtpFrom") as string;
+  try {
+    const smtpHost = formData.get("smtpHost") as string;
+    const smtpPort = parseInt(formData.get("smtpPort") as string);
+    const smtpSecure = formData.get("smtpSecure") === "on";
+    const smtpUser = formData.get("smtpUser") as string;
+    const smtpPass = formData.get("smtpPass") as string;
+    const smtpFrom = formData.get("smtpFrom") as string;
 
-  let smtpPassEnc: string | null = null;
-  if (smtpPass) {
-    smtpPassEnc = encryptSecret(smtpPass);
+    let smtpPassEnc: string | null = null;
+    if (smtpPass) {
+      try {
+        smtpPassEnc = encryptSecret(smtpPass);
+      } catch (err) {
+        console.error("Encryption Error:", err);
+        return redirect("/admin?error=encryption_failed&msg=APP_ENCRYPTION_KEY_missing_or_invalid");
+      }
+    }
+
+    const updateData: any = {
+      smtpHost: smtpHost || null,
+      smtpPort: isNaN(smtpPort) ? null : smtpPort,
+      smtpSecure,
+      smtpUser: smtpUser || null,
+      smtpFrom: smtpFrom || null,
+    };
+
+    if (smtpPassEnc) {
+      updateData.smtpPassEnc = smtpPassEnc;
+    }
+
+    await prisma.globalSettings.upsert({
+      where: { id: "system" },
+      create: {
+        id: "system",
+        ...updateData
+      },
+      update: updateData
+    });
+
+    revalidatePath("/admin");
+    return redirect("/admin?saved=smtp");
+  } catch (err) {
+    console.error("Owner SMTP Save Error:", err);
+    const msg = err instanceof Error ? err.message : "unknown_server_error";
+    return redirect(`/admin?error=save_failed&msg=${encodeURIComponent(msg)}`);
   }
-
-  const updateData: any = {
-    smtpHost: smtpHost || null,
-    smtpPort: isNaN(smtpPort) ? null : smtpPort,
-    smtpSecure,
-    smtpUser: smtpUser || null,
-    smtpFrom: smtpFrom || null,
-  };
-
-  if (smtpPassEnc) {
-    updateData.smtpPassEnc = smtpPassEnc;
-  }
-
-  await prisma.globalSettings.update({
-    where: { id: "system" },
-    data: updateData
-  });
-
-  revalidatePath("/admin");
 }
 
 export async function testOwnerSmtpSettings(formData: FormData) {
