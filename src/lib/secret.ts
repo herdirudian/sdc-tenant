@@ -8,8 +8,16 @@ export class AppEncryptionKeyError extends Error {
 }
 
 function getKey() {
+  // Try to load dotenv again just in case (only in dev/cli context)
+  if (!process.env.APP_ENCRYPTION_KEY) {
+    require("dotenv").config();
+  }
+
   const raw = process.env.APP_ENCRYPTION_KEY;
-  if (!raw) throw new AppEncryptionKeyError("Missing env: APP_ENCRYPTION_KEY");
+  if (!raw) {
+    console.error("CRITICAL: APP_ENCRYPTION_KEY is undefined in process.env");
+    throw new AppEncryptionKeyError("Missing env: APP_ENCRYPTION_KEY");
+  }
   
   // Try to parse as base64 first
   let key = Buffer.from(raw, "base64");
