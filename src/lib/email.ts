@@ -21,86 +21,55 @@ function env(name: string): string {
 }
 
 async function getSmtpConfig(tenantId?: string) {
-  // 1. If tenantId is provided, try to get Tenant's SMTP settings
+  console.log("DEBUG: Getting SMTP config for tenant:", tenantId || "SYSTEM/OWNER");
+
+  // 1. Try to get Tenant's SMTP settings if tenantId is provided
   if (tenantId) {
     const settings = await prisma.companySettings.findFirst({
       where: { tenantId },
-      select: {
-        smtpHost: true,
-        smtpPort: true,
-        smtpSecure: true,
-        smtpUser: true,
-        smtpPass: true,
-        smtpPassEnc: true,
-        smtpFrom: true,
-      },
     });
 
-    if (settings?.smtpHost && settings?.smtpPort && settings?.smtpUser && settings?.smtpFrom) {
-      let pass: string | null = settings.smtpPass;
-      if (!pass && settings.smtpPassEnc) {
-        try {
-          pass = decryptSecret(settings.smtpPassEnc);
-        } catch (err) {}
-      }
-      
-      if (pass) {
-        return {
-          host: settings.smtpHost,
-          port: settings.smtpPort,
-          secure: Boolean(settings.smtpSecure),
-          user: settings.smtpUser,
-          pass,
-          from: settings.smtpFrom,
-        };
-      }
+    if (settings?.smtpHost && settings?.smtpUser) {
+      console.log("DEBUG: Using Tenant SMTP settings from DB");
+      return {
+        host: settings.smtpHost,
+        port: settings.smtpPort || 465,
+        secure: Boolean(settings.smtpSecure),
+        user: settings.smtpUser,
+        pass: settings.smtpPass || "", // Use plain text pass
+        from: settings.smtpFrom || settings.smtpUser,
+      };
     }
   }
 
   // 2. Try to get Owner's Global SMTP settings
   const globalSettings = await prisma.globalSettings.findUnique({
     where: { id: "system" },
-    select: {
-      smtpHost: true,
-      smtpPort: true,
-      smtpSecure: true,
-      smtpUser: true,
-      smtpPass: true,
-      smtpPassEnc: true,
-      smtpFrom: true,
-    },
   });
 
-  if (globalSettings?.smtpHost && globalSettings?.smtpPort && globalSettings?.smtpUser && globalSettings?.smtpFrom) {
-    let pass: string | null = globalSettings.smtpPass;
-    if (!pass && globalSettings.smtpPassEnc) {
-      try {
-        pass = decryptSecret(globalSettings.smtpPassEnc);
-      } catch (err) {}
-    }
-
-    if (pass) {
-      return {
-        host: globalSettings.smtpHost,
-        port: globalSettings.smtpPort,
-        secure: Boolean(globalSettings.smtpSecure),
-        user: globalSettings.smtpUser,
-        pass,
-        from: globalSettings.smtpFrom,
-      };
-    }
+  if (globalSettings?.smtpHost && globalSettings?.smtpUser) {
+    console.log("DEBUG: Using Owner SMTP settings from DB");
+    return {
+      host: globalSettings.smtpHost,
+      port: globalSettings.smtpPort || 465,
+      secure: Boolean(globalSettings.smtpSecure),
+      user: globalSettings.smtpUser,
+      pass: globalSettings.smtpPass || "", // Use plain text pass
+      from: globalSettings.smtpFrom || globalSettings.smtpUser,
+    };
   }
 
-  // 3. Final Fallback to Environment Variables (Optional but good to have)
-  const host = env("SMTP_HOST");
-  if (host) {
+  // 3. Final Fallback to Environment Variables
+  const envHost = process.env.SMTP_HOST;
+  if (envHost) {
+    console.log("DEBUG: Using SMTP settings from .env");
     return {
-      host,
-      port: Number(env("SMTP_PORT") || 465),
+      host: envHost,
+      port: Number(process.env.SMTP_PORT || 465),
       secure: (process.env.SMTP_SECURE ?? "false").toLowerCase() === "true",
-      user: env("SMTP_USER"),
-      pass: env("SMTP_PASS"),
-      from: env("SMTP_FROM"),
+      user: process.env.SMTP_USER || "",
+      pass: process.env.SMTP_PASS || "",
+      from: process.env.SMTP_FROM || "",
     };
   }
 
