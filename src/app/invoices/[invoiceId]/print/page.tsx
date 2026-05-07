@@ -271,7 +271,7 @@ export default async function InvoicePrintPage({
                               <TableCell className="p-3 align-top">
                                 <div className="font-bold text-slate-900">{item.description}</div>
                               </TableCell>
-                              <TableCell className="p-3 text-center align-top font-medium">{item.quantity}</TableCell>
+                              <TableCell className="p-3 text-center align-top font-medium">{item.quantity.toString()}</TableCell>
                               <TableCell className="p-3 text-right align-top font-medium">{formatIDR(item.price.toString())}</TableCell>
                               <TableCell className="p-3 text-right align-top font-bold text-slate-900">{formatIDR(item.amount.toString())}</TableCell>
                             </TableRow>
