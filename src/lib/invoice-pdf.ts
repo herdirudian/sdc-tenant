@@ -88,9 +88,13 @@ export async function generateInvoicePdf(invoice: InvoiceData, settings: Company
       try {
         const letterheadPath = path.join(process.cwd(), "public", settings.letterheadUrl.replace(/^\/+/g, ""));
         if (fs.existsSync(letterheadPath)) {
+          // Hanya render jika file ada dan BUKAN gambar default yang mengganggu
           doc.image(letterheadPath, 0, 0, { width: 595.28 }); // A4 width
         }
       } catch (err) {}
+    } else {
+      // Pastikan TIDAK ADA background default jika letterheadUrl kosong
+      console.log("DEBUG: No letterhead URL, skipping background image");
     }
 
     // --- 1. Top Section: Logo & Company Info ---
