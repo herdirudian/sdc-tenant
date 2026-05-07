@@ -177,6 +177,7 @@ export async function updateGlobalSettings(formData: FormData) {
       const buf = Buffer.from(await guideFile.arrayBuffer());
       await writeFile(diskPath, buf);
 
+      // Pastikan URL mengarah ke path yang bisa diakses publik melalui browser
       guideUrl = `/uploads/system/${fileName}`;
     } catch (err) {
       console.error("Failed to upload guide PDF:", err);
