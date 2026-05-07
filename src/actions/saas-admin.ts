@@ -189,6 +189,7 @@ export async function updateOwnerSmtpSettings(formData: FormData) {
     const smtpFrom = formData.get("smtpFrom") as string;
 
     let smtpPassEnc: string | null = null;
+    /* 
     if (smtpPass) {
       try {
         console.log("DEBUG: Attempting encryption with APP_ENCRYPTION_KEY length:", process.env.APP_ENCRYPTION_KEY?.length || 0);
@@ -200,6 +201,7 @@ export async function updateOwnerSmtpSettings(formData: FormData) {
         return redirect(`/admin?error=encryption_failed&msg=${encodeURIComponent(`${errType}: ${errMsg}`)}`);
       }
     }
+    */
 
     const updateData: any = {
       smtpHost: smtpHost || null,
