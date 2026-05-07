@@ -188,28 +188,13 @@ export async function updateOwnerSmtpSettings(formData: FormData) {
     const smtpPass = formData.get("smtpPass") as string;
     const smtpFrom = formData.get("smtpFrom") as string;
 
-    let smtpPassEnc: string | null = null;
-    /* 
-    if (smtpPass) {
-      try {
-        console.log("DEBUG: Attempting encryption with APP_ENCRYPTION_KEY length:", process.env.APP_ENCRYPTION_KEY?.length || 0);
-        smtpPassEnc = encryptSecret(smtpPass);
-      } catch (err) {
-        console.error("Encryption Error:", err);
-        const errType = err instanceof Error ? err.name : "UnknownError";
-        const errMsg = err instanceof Error ? err.message : "No message";
-        return redirect(`/admin?error=encryption_failed&msg=${encodeURIComponent(`${errType}: ${errMsg}`)}`);
-      }
-    }
-    */
-
     const updateData: any = {
       smtpHost: smtpHost || null,
       smtpPort: isNaN(smtpPort) ? null : smtpPort,
       smtpSecure,
       smtpUser: smtpUser || null,
       smtpFrom: smtpFrom || null,
-      smtpPass: smtpPass || null, // Store as plain text for now to bypass encryption key issues
+      smtpPass: smtpPass || null,
     };
 
     await prisma.globalSettings.upsert({

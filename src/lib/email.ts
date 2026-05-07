@@ -15,10 +15,9 @@ export type SendEmailInput = {
   }>;
 };
 
-function env(name: string) {
-  const v = process.env[name];
-  if (!v) throw new Error(`Missing env: ${name}`);
-  return v;
+function env(name: string): string {
+  const value = process.env[name];
+  return value || "";
 }
 
 async function getSmtpConfig(tenantId?: string) {
@@ -31,35 +30,34 @@ async function getSmtpConfig(tenantId?: string) {
         smtpPort: true,
         smtpSecure: true,
         smtpUser: true,
+        smtpPass: true,
         smtpPassEnc: true,
         smtpFrom: true,
       },
     });
 
-    const hasDb = Boolean(settings?.smtpHost && settings?.smtpPort && settings?.smtpUser && settings?.smtpFrom);
-    if (hasDb) {
-      let pass: string | null = null;
-      if (settings?.smtpPassEnc) {
+    if (settings?.smtpHost && settings?.smtpPort && settings?.smtpUser && settings?.smtpFrom) {
+      let pass: string | null = settings.smtpPass;
+      if (!pass && settings.smtpPassEnc) {
         try {
           pass = decryptSecret(settings.smtpPassEnc);
-        } catch (err) {
-          console.error("Failed to decrypt tenant SMTP password:", err);
-        }
+        } catch (err) {}
       }
+      
       if (pass) {
         return {
-          host: settings!.smtpHost as string,
-          port: settings!.smtpPort as number,
-          secure: Boolean(settings!.smtpSecure),
-          user: settings!.smtpUser as string,
+          host: settings.smtpHost,
+          port: settings.smtpPort,
+          secure: Boolean(settings.smtpSecure),
+          user: settings.smtpUser,
           pass,
-          from: settings!.smtpFrom as string,
+          from: settings.smtpFrom,
         };
       }
     }
   }
 
-  // 2. Try to get Owner's Global SMTP settings from Database
+  // 2. Try to get Owner's Global SMTP settings
   const globalSettings = await prisma.globalSettings.findUnique({
     where: { id: "system" },
     select: {
@@ -67,49 +65,46 @@ async function getSmtpConfig(tenantId?: string) {
       smtpPort: true,
       smtpSecure: true,
       smtpUser: true,
+      smtpPass: true,
       smtpPassEnc: true,
       smtpFrom: true,
     },
   });
 
-  const hasGlobalDb = Boolean(globalSettings?.smtpHost && globalSettings?.smtpPort && globalSettings?.smtpUser && globalSettings?.smtpFrom);
-  if (hasGlobalDb) {
-    let pass: string | null = null;
-    
-    // 1. Try plain text first (bypass)
-    if ((globalSettings as any).smtpPass) {
-      pass = (globalSettings as any).smtpPass;
-    } 
-    // 2. Try encrypted if plain is not available
-    else if (globalSettings?.smtpPassEnc) {
+  if (globalSettings?.smtpHost && globalSettings?.smtpPort && globalSettings?.smtpUser && globalSettings?.smtpFrom) {
+    let pass: string | null = globalSettings.smtpPass;
+    if (!pass && globalSettings.smtpPassEnc) {
       try {
         pass = decryptSecret(globalSettings.smtpPassEnc);
-      } catch (err) {
-        console.error("Failed to decrypt global SMTP password:", err);
-      }
+      } catch (err) {}
     }
 
     if (pass) {
       return {
-        host: globalSettings!.smtpHost as string,
-        port: globalSettings!.smtpPort as number,
-        secure: Boolean(globalSettings!.smtpSecure),
-        user: globalSettings!.smtpUser as string,
+        host: globalSettings.smtpHost,
+        port: globalSettings.smtpPort,
+        secure: Boolean(globalSettings.smtpSecure),
+        user: globalSettings.smtpUser,
         pass,
-        from: globalSettings!.smtpFrom as string,
+        from: globalSettings.smtpFrom,
       };
     }
   }
 
-  // 3. Final Fallback to Environment Variables
-  return {
-    host: env("SMTP_HOST"),
-    port: Number(env("SMTP_PORT")),
-    secure: (process.env.SMTP_SECURE ?? "false").toLowerCase() === "true",
-    user: env("SMTP_USER"),
-    pass: env("SMTP_PASS"),
-    from: env("SMTP_FROM"),
-  };
+  // 3. Final Fallback to Environment Variables (Optional but good to have)
+  const host = env("SMTP_HOST");
+  if (host) {
+    return {
+      host,
+      port: Number(env("SMTP_PORT") || 465),
+      secure: (process.env.SMTP_SECURE ?? "false").toLowerCase() === "true",
+      user: env("SMTP_USER"),
+      pass: env("SMTP_PASS"),
+      from: env("SMTP_FROM"),
+    };
+  }
+
+  throw new Error("SMTP belum dikonfigurasi. Silakan atur di System Owner > Kendali Sistem.");
 }
 
 export async function sendEmail(input: SendEmailInput & { tenantId?: string }) {
