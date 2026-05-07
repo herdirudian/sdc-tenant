@@ -125,6 +125,14 @@ export default async function InvoicePrintPage(props: {
               height: 297mm;
               z-index: -1;
             }
+            .bg-slate-50 {
+              background-color: #f8fafc !important;
+              -webkit-print-color-adjust: exact;
+            }
+            .bg-slate-900 {
+              background-color: #0f172a !important;
+              -webkit-print-color-adjust: exact;
+            }
             .print-header-space {
               height: 10mm;
             }
@@ -158,7 +166,7 @@ export default async function InvoicePrintPage(props: {
           <PrintControls />
         </div>
 
-        <div className="print-container relative bg-white shadow-2xl print:shadow-none overflow-hidden">
+        <div className="print-container relative bg-white print:bg-transparent shadow-2xl print:shadow-none overflow-hidden">
           {/* Screen Background */}
           {settings.letterheadUrl && (
             <div className="absolute inset-0 pointer-events-none print:hidden">
