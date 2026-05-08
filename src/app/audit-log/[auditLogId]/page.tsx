@@ -16,11 +16,11 @@ export default async function AuditLogDetailPage({
 }: {
   params: Promise<{ auditLogId: string }>;
 }) {
-  await requireRole([UserRole.ADMIN]);
+  const actor = await requireRole([UserRole.ADMIN]);
   const { auditLogId } = await params;
 
-  const log = await prisma.auditLog.findUnique({
-    where: { id: auditLogId },
+  const log = await prisma.auditLog.findFirst({
+    where: { id: auditLogId, tenantId: actor.tenantId },
     include: { actorUser: true },
   });
   if (!log) notFound();

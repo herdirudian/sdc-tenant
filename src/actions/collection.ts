@@ -28,7 +28,7 @@ export async function addInvoiceFollowUp(formData: FormData) {
       ? new Date(parsed.data.nextFollowUpAt)
       : null;
 
-  const before = await prisma.invoice.findUnique({ where: { id: parsed.data.invoiceId } });
+  const before = await prisma.invoice.findFirst({ where: { id: parsed.data.invoiceId, tenantId: actor.tenantId } });
   if (!before) redirect("/invoices");
 
   await prisma.$transaction([

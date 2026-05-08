@@ -70,7 +70,9 @@ export async function updateUserRole(formData: FormData) {
   });
   if (!parsed.success) redirect("/users?error=invalid");
 
-  const before = await prisma.user.findUnique({ where: { id: parsed.data.userId } });
+  const before = await prisma.user.findFirst({ where: { id: parsed.data.userId, tenantId: actor.tenantId } });
+  if (!before) redirect("/users?error=not_found");
+
   const after = await prisma.user.update({
     where: { id: parsed.data.userId },
     data: { role: parsed.data.role },
@@ -106,7 +108,9 @@ export async function setUserActive(formData: FormData) {
   });
   if (!parsed.success) redirect("/users?error=invalid");
 
-  const before = await prisma.user.findUnique({ where: { id: parsed.data.userId } });
+  const before = await prisma.user.findFirst({ where: { id: parsed.data.userId, tenantId: actor.tenantId } });
+  if (!before) redirect("/users?error=not_found");
+
   const after = await prisma.user.update({
     where: { id: parsed.data.userId },
     data: { isActive: parsed.data.isActive },
@@ -146,7 +150,9 @@ export async function resetUserPassword(formData: FormData) {
   });
   if (!parsed.success) redirect("/users?error=invalid");
 
-  const before = await prisma.user.findUnique({ where: { id: parsed.data.userId } });
+  const before = await prisma.user.findFirst({ where: { id: parsed.data.userId, tenantId: actor.tenantId } });
+  if (!before) redirect("/users?error=not_found");
+
   const after = await prisma.user.update({
     where: { id: parsed.data.userId },
     data: { passwordHash: createPasswordHash(parsed.data.password) },
