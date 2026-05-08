@@ -180,11 +180,13 @@ async function generateInvoiceNumber(tenantId: string) {
       tenantId,
       invoiceNumber: { startsWith: prefix } 
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { invoiceNumber: "desc" }, // Order by invoiceNumber string desc to get the highest suffix
     select: { invoiceNumber: true },
   });
 
-  const latestSuffix = latest?.invoiceNumber.slice(prefix.length) ?? "";
+  if (!latest) return `${prefix}001`;
+
+  const latestSuffix = latest.invoiceNumber.slice(prefix.length);
   const latestNumber = Number.parseInt(latestSuffix, 10);
   const next = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
 
