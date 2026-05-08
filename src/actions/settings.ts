@@ -199,7 +199,7 @@ export async function updateCompanySettings(formData: FormData) {
   }
 
   const after = await prisma.companySettings.upsert({
-    where: { id: before?.id || "new" },
+    where: { tenantId },
     create: {
       tenantId,
       companyName: parsed.data.companyName,
@@ -249,8 +249,8 @@ export async function updateCompanySettings(formData: FormData) {
 }
 
 export async function updateSmtpSettings(formData: FormData) {
-  const { tenantId, user: actor } = await requireTenant();
-  if (actor.role !== UserRole.ADMIN) redirect("/settings?error=forbidden");
+  const actor = await requireRole([UserRole.ADMIN]);
+  const { tenantId } = actor;
 
   const parsed = smtpSchema.safeParse({
     smtpHost: formData.get("smtpHost"),
@@ -260,7 +260,14 @@ export async function updateSmtpSettings(formData: FormData) {
     smtpPass: formData.get("smtpPass"),
     smtpFrom: formData.get("smtpFrom"),
   });
-  if (!parsed.success) redirect("/settings?error=invalid");
+
+  if (!parsed.success) {
+    console.error("[Settings] SMTP Validation failed:", parsed.error.flatten().fieldErrors);
+    const errorMsg = Object.entries(parsed.error.flatten().fieldErrors)
+      .map(([field, errors]) => `${field}: ${errors?.join(", ")}`)
+      .join(" | ");
+    redirect(`/settings?error=invalid&msg=${encodeURIComponent(errorMsg)}`);
+  }
 
   const before = await prisma.companySettings.findFirst({ where: { tenantId } });
   let passEnc: string | undefined;
@@ -280,7 +287,7 @@ export async function updateSmtpSettings(formData: FormData) {
   }
 
   const after = await prisma.companySettings.upsert({
-    where: { id: before?.id || "new" },
+    where: { tenantId }, // Use tenantId as unique key for upsert
     create: {
       tenantId,
       companyName: before?.companyName || "Sistem Invoice SDC",

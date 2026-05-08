@@ -126,15 +126,15 @@ async function getAgingSummaryForDashboard(tenantId: string) {
   return buckets;
 }
 
-export async function getOnboardingStatus() {
-  const { tenantId } = await requireTenant();
+export async function getOnboardingStatus(tenantId?: string) {
+  const effectiveTenantId = tenantId ?? (await requireTenant()).tenantId;
 
   const [company, clientCount, projectCount, invoiceCount, bankCount] = await Promise.all([
-    prisma.companySettings.findFirst({ where: { tenantId } }),
-    prisma.client.count({ where: { tenantId } }),
-    prisma.project.count({ where: { tenantId } }),
-    prisma.invoice.count({ where: { tenantId } }),
-    prisma.bankAccount.count({ where: { tenantId } }),
+    prisma.companySettings.findFirst({ where: { tenantId: effectiveTenantId } }),
+    prisma.client.count({ where: { tenantId: effectiveTenantId } }),
+    prisma.project.count({ where: { tenantId: effectiveTenantId } }),
+    prisma.invoice.count({ where: { tenantId: effectiveTenantId } }),
+    prisma.bankAccount.count({ where: { tenantId: effectiveTenantId } }),
   ]);
 
   const steps = [
