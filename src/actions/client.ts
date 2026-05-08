@@ -85,7 +85,8 @@ export async function updateClient(formData: FormData) {
   const actor = await requireRole([UserRole.ADMIN, UserRole.STAFF]);
   const id = z.string().min(1).parse(formData.get("id"));
 
-  const before = await prisma.client.findUnique({ where: { id } });
+  const before = await prisma.client.findFirst({ where: { id, tenantId: actor.tenantId } });
+  if (!before) redirect("/clients?error=not_found");
 
   const parsed = clientSchema.safeParse({
     name: formData.get("name"),
@@ -144,7 +145,9 @@ export async function deleteClient(formData: FormData) {
   const actor = await requireRole([UserRole.ADMIN]);
   const id = z.string().min(1).parse(formData.get("id"));
 
-  const before = await prisma.client.findUnique({ where: { id } });
+  const before = await prisma.client.findFirst({ where: { id, tenantId: actor.tenantId } });
+  if (!before) redirect("/clients?error=not_found");
+  
   await prisma.client.delete({ where: { id } });
 
   const meta = await getRequestMeta();
@@ -214,7 +217,8 @@ export async function getClientsPaged(input: {
 }
 
 export async function getClientById(id: string) {
-  return prisma.client.findUnique({ where: { id } });
+  const user = await requireUser();
+  return prisma.client.findFirst({ where: { id, tenantId: user.tenantId } });
 }
 
 function parseCsv(text: string) {

@@ -74,7 +74,9 @@ export async function createProject(formData: FormData) {
 export async function updateProject(formData: FormData) {
   const actor = await requireRole([UserRole.ADMIN, UserRole.STAFF]);
   const id = z.string().min(1).parse(formData.get("id"));
-  const before = await prisma.project.findUnique({ where: { id } });
+  const before = await prisma.project.findFirst({ where: { id, tenantId: actor.tenantId } });
+  if (!before) redirect("/projects?error=not_found");
+
   const parsed = projectSchema.safeParse({
     clientId: formData.get("clientId"),
     name: formData.get("name"),
@@ -120,7 +122,9 @@ export async function deleteProject(formData: FormData) {
   const actor = await requireRole([UserRole.ADMIN]);
   const id = z.string().min(1).parse(formData.get("id"));
 
-  const before = await prisma.project.findUnique({ where: { id } });
+  const before = await prisma.project.findFirst({ where: { id, tenantId: actor.tenantId } });
+  if (!before) redirect("/projects?error=not_found");
+
   await prisma.project.delete({ where: { id } });
 
   const meta = await getRequestMeta();
@@ -152,8 +156,9 @@ export async function getProjects() {
 }
 
 export async function getProjectById(id: string) {
-  return prisma.project.findUnique({
-    where: { id },
+  const user = await requireUser();
+  return prisma.project.findFirst({
+    where: { id, tenantId: user.tenantId },
     include: {
       client: true,
       invoices: { orderBy: { createdAt: "desc" } },

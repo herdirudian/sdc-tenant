@@ -14,7 +14,8 @@ export interface PnLData {
 }
 
 export async function getPnLReport(input: { from: string; to: string }): Promise<PnLData> {
-  await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
+  const actor = await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
+  const { tenantId } = actor;
   const from = new Date(input.from);
   const to = new Date(input.to);
   to.setHours(23, 59, 59, 999);
@@ -22,6 +23,7 @@ export async function getPnLReport(input: { from: string; to: string }): Promise
   const [incomeAgg, expenseAgg, expenseBreakdownRaw] = await Promise.all([
     prisma.ledgerEntry.aggregate({
       where: {
+        tenantId,
         type: LedgerEntryType.INCOME,
         occurredAt: { gte: from, lte: to },
       },
@@ -29,6 +31,7 @@ export async function getPnLReport(input: { from: string; to: string }): Promise
     }),
     prisma.ledgerEntry.aggregate({
       where: {
+        tenantId,
         type: LedgerEntryType.EXPENSE,
         occurredAt: { gte: from, lte: to },
       },
@@ -37,6 +40,7 @@ export async function getPnLReport(input: { from: string; to: string }): Promise
     prisma.expense.groupBy({
       by: ["category"],
       where: {
+        tenantId,
         occurredAt: { gte: from, lte: to },
       },
       _sum: { amount: true },
@@ -94,13 +98,15 @@ export interface TaxRecapData {
 }
 
 export async function getTaxRecapReport(input: { from: string; to: string }): Promise<TaxRecapData> {
-  await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
+  const actor = await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
+  const { tenantId } = actor;
   const from = new Date(input.from);
   const to = new Date(input.to);
   to.setHours(23, 59, 59, 999);
 
   const invoices = await prisma.invoice.findMany({
     where: {
+      tenantId,
       status: InvoiceStatus.PAID,
       paidAt: { gte: from, lte: to },
     },

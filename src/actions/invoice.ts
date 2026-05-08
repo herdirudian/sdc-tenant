@@ -985,8 +985,9 @@ export async function deleteInvoice(formData: FormData) {
 }
 
 export async function getInvoices() {
-  await requireRole([UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF]);
+  const { tenantId } = await requireTenant();
   return prisma.invoice.findMany({
+    where: { tenantId },
     include: { client: true, project: true },
     orderBy: { createdAt: "desc" },
   });
@@ -994,11 +995,12 @@ export async function getInvoices() {
 
 export async function bulkApproveInvoices(formData: FormData) {
   const actor = await requireRole([UserRole.ADMIN]);
+  const { tenantId } = actor;
   const ids = formData.getAll("ids") as string[];
   if (ids.length === 0) redirect("/invoices");
 
   const invoices = await prisma.invoice.findMany({
-    where: { id: { in: ids }, approvalStatus: InvoiceApprovalStatus.DRAFT },
+    where: { id: { in: ids }, tenantId, approvalStatus: InvoiceApprovalStatus.DRAFT },
   });
 
   if (invoices.length === 0) redirect("/invoices");
@@ -1028,12 +1030,14 @@ export async function bulkApproveInvoices(formData: FormData) {
 
 export async function bulkMarkSentInvoices(formData: FormData) {
   const actor = await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
+  const { tenantId } = actor;
   const ids = formData.getAll("ids") as string[];
   if (ids.length === 0) redirect("/invoices");
 
   const invoices = await prisma.invoice.findMany({
     where: { 
       id: { in: ids }, 
+      tenantId,
       approvalStatus: InvoiceApprovalStatus.APPROVED 
     },
   });
@@ -1084,22 +1088,23 @@ export async function getInvoicesPaged(input: {
   page?: number;
   pageSize?: number;
 }) {
-  await requireRole([UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF]);
+  const { tenantId } = await requireTenant();
   const q = input.q?.trim();
   const pageSize = input.pageSize ?? 20;
   const page = input.page ?? 1;
   const skip = Math.max(0, (page - 1) * pageSize);
 
-  const where: Prisma.InvoiceWhereInput = q
-    ? {
-        OR: [
-          { invoiceNumber: { contains: q } },
-          { client: { name: { contains: q } } },
-          { client: { companyName: { contains: q } } },
-          { project: { name: { contains: q } } },
-        ],
-      }
-    : {};
+  const where: Prisma.InvoiceWhereInput = {
+    tenantId,
+    ...(q ? {
+      OR: [
+        { invoiceNumber: { contains: q } },
+        { client: { name: { contains: q } } },
+        { client: { companyName: { contains: q } } },
+        { project: { name: { contains: q } } },
+      ],
+    } : {})
+  };
 
   const [items, total] = await prisma.$transaction([
     prisma.invoice.findMany({
@@ -1130,8 +1135,9 @@ export async function getInvoicesPaged(input: {
 }
 
 export async function getInvoiceById(id: string) {
-  return prisma.invoice.findUnique({
-    where: { id },
+  const { tenantId } = await requireTenant();
+  return prisma.invoice.findFirst({
+    where: { id, tenantId },
     include: {
       client: true,
       project: true,
@@ -1146,8 +1152,9 @@ export async function getInvoiceById(id: string) {
 }
 
 export async function getPaymentById(id: string) {
-  return prisma.invoicePayment.findUnique({
-    where: { id },
+  const { tenantId } = await requireTenant();
+  return prisma.invoicePayment.findFirst({
+    where: { id, invoice: { tenantId } },
     include: {
       invoice: {
         include: {
@@ -1160,9 +1167,10 @@ export async function getPaymentById(id: string) {
 }
 
 export async function getTaxReminderInvoices() {
-  await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
+  const { tenantId } = await requireTenant();
   return prisma.invoice.findMany({
     where: {
+      tenantId,
       isDeductedByClient: false,
       status: "PAID" as any,
       pphPaidAt: null,

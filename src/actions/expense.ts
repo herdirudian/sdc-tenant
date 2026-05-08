@@ -214,8 +214,8 @@ export async function updateExpenseAction(formData: FormData) {
   const occurredAt = new Date(parsed.data.occurredAt);
   const amount = new Prisma.Decimal(parsed.data.amount);
 
-  const before = await prisma.expense.findUnique({ where: { id } });
-  if (!before) redirect("/expenses");
+  const before = await prisma.expense.findFirst({ where: { id, tenantId: actor.tenantId } });
+  if (!before) redirect("/expenses?error=not_found");
 
   await prisma.$transaction(async (tx) => {
     await tx.expense.update({
@@ -267,8 +267,8 @@ export async function deleteExpenseAction(formData: FormData) {
   const actor = await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
   const id = z.string().min(1).parse(formData.get("id"));
 
-  const before = await prisma.expense.findUnique({ where: { id } });
-  if (!before) redirect("/expenses");
+  const before = await prisma.expense.findFirst({ where: { id, tenantId: actor.tenantId } });
+  if (!before) redirect("/expenses?error=not_found");
 
   await prisma.$transaction([
     prisma.ledgerEntry.deleteMany({ where: { expenseId: id } }),
@@ -304,8 +304,8 @@ export async function getExpenseCategories() {
 }
 
 export async function getExpenseById(id: string) {
-  await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
-  return prisma.expense.findUnique({
-    where: { id },
+  const actor = await requireRole([UserRole.ADMIN, UserRole.FINANCE]);
+  return prisma.expense.findFirst({
+    where: { id, tenantId: actor.tenantId },
   });
 }

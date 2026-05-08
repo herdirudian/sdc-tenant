@@ -51,9 +51,10 @@ export async function getLedgerSummary(input: { from?: string; to?: string }) {
 
 export async function backfillLedgerFromPayments() {
   const actor = await requireRole([UserRole.ADMIN]);
+  const { tenantId } = actor;
 
   const payments = await prisma.invoicePayment.findMany({
-    where: { ledgerEntry: null },
+    where: { ledgerEntry: null, invoice: { tenantId } },
     include: { invoice: { select: { id: true, invoiceNumber: true } } },
     take: 500,
   });
