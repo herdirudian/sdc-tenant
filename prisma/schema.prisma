@@ -276,7 +276,7 @@ model Project {
 model Invoice {
   id                 String                @id @default(cuid())
   tenantId           String                @map("tenant_id")
-  invoiceNumber      String                @unique @map("invoice_number") @db.VarChar(64)
+  invoiceNumber      String                @map("invoice_number") @db.VarChar(64)
   taxInvoiceNumber   String?               @map("tax_invoice_number") @db.VarChar(64)
   clientId           String                @map("client_id")
   projectId          String?               @map("project_id")
@@ -328,6 +328,7 @@ model Invoice {
   @@index([nextFollowUpAt])
   @@index([template])
   @@index([tenantId])
+  @@unique([tenantId, invoiceNumber])
   @@map("invoices")
 }
 
@@ -411,7 +412,7 @@ model EmailOutbox {
   tenantId          String            @map("tenant_id")
   type              EmailMessageType
   status            EmailOutboxStatus @default(PENDING)
-  dedupeKey         String?           @unique @map("dedupe_key")
+  dedupeKey         String?           @map("dedupe_key")
   invoiceId         String?           @map("invoice_id")
   toEmail           String            @map("to_email")
   subject           String
@@ -438,6 +439,7 @@ model EmailOutbox {
   @@index([lockedAt])
   @@index([createdByUserId], map: "email_outbox_created_by_user_id_fkey")
   @@index([tenantId])
+  @@unique([tenantId, dedupeKey])
   @@map("email_outbox")
 }
 
